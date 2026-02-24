@@ -1,0 +1,34 @@
+type: custom:mushroom-template-card
+entity: sensor.sports_ticker_mlb_ticker
+primary: >
+  {% set s = states(entity) %}
+  {{ s if s not in ['unknown','unavailable',''] else 'No games found' }}
+secondary: >
+  {% set n = state_attr(entity, 'next') %}
+  {% if n and n.date %}
+    Next: {{ (as_datetime(n.date)).strftime('%a %b %-d • %-I:%M %p') }}
+  {% else %}
+    Waiting for schedule…
+  {% endif %}
+icon: mdi:scoreboard-outline
+tap_action:
+  action: more-info
+multiline_secondary: false
+card_mod:
+  style: |
+    ha-card {
+      overflow: hidden;
+    }
+    mushroom-state-info {
+      overflow: hidden;
+    }
+    .primary {
+      white-space: nowrap;
+      display: inline-block;
+      animation: ticker-scroll 14s linear infinite;
+      will-change: transform;
+    }
+    @keyframes ticker-scroll {
+      0%   { transform: translateX(100%); }
+      100% { transform: translateX(-120%); }
+    }

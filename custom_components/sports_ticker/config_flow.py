@@ -23,7 +23,6 @@ class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         if user_input is not None:
-            # Ensure leagues always a list
             leagues = user_input.get(CONF_LEAGUES) or []
             if isinstance(leagues, str):
                 leagues = [leagues]

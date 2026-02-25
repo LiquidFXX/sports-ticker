@@ -67,7 +67,7 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         super().__init__(
             hass=hass,
-            logger=LOGGER,  # ✅ must not be None
+            logger=LOGGER,  # ✅ FIX: must not be None
             name=DOMAIN,
             update_interval=timedelta(seconds=poll),
         )
@@ -84,13 +84,10 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_update_data(self) -> dict[str, Any]:
         leagues = self.entry.options.get(
             CONF_LEAGUES,
-            self.entry.data.get(CONF_LEAGUES, ["mlb", "nhl", "nba", "nfl"]),
+            self.entry.data.get(CONF_LEAGUES, ["mlb", "nfl"]),
         )
         if not isinstance(leagues, list):
             leagues = [str(leagues)]
-
-        # normalize: handle accidental uppercase or whitespace
-        leagues = [str(x).strip().lower() for x in leagues]
 
         result: dict[str, Any] = {}
         fetched_at = datetime.now(timezone.utc).isoformat()

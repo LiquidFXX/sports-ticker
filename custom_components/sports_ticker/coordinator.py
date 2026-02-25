@@ -1,3 +1,13 @@
+import logging
+...
+LOGGER = logging.getLogger(__name__)
+...
+super().__init__(
+    hass=hass,
+    logger=LOGGER,   # ✅ not None
+    name=DOMAIN,
+    update_interval=timedelta(seconds=poll),
+)
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone

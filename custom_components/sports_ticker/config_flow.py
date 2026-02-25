@@ -14,6 +14,9 @@ from .const import (
 )
 
 
+DEFAULT_LEAGUES = ["mlb", "nhl", "nba", "nfl"]
+
+
 class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
@@ -22,13 +25,13 @@ class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             leagues = user_input.get(CONF_LEAGUES) or []
             if isinstance(leagues, str):
                 leagues = [leagues]
-            user_input[CONF_LEAGUES] = leagues
+            # normalize just in case
+            user_input[CONF_LEAGUES] = [str(x).strip().lower() for x in leagues]
             return self.async_create_entry(title="Sports Ticker", data=user_input)
 
         data_schema = vol.Schema(
             {
-                # ✅ defaults must match LEAGUES.keys() (lowercase)
-                vol.Required(CONF_LEAGUES, default=["mlb", "nhl", "nba", "nfl"]): selector.SelectSelector(
+                vol.Required(CONF_LEAGUES, default=DEFAULT_LEAGUES): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=sorted(list(LEAGUES.keys())),
                         multiple=True,
@@ -57,15 +60,18 @@ class SportsTickerOptionsFlow(config_entries.OptionsFlow):
             leagues = user_input.get(CONF_LEAGUES) or []
             if isinstance(leagues, str):
                 leagues = [leagues]
-            user_input[CONF_LEAGUES] = leagues
+            user_input[CONF_LEAGUES] = [str(x).strip().lower() for x in leagues]
             return self.async_create_entry(title="", data=user_input)
 
         current = {**self.config_entry.data, **self.config_entry.options}
+        current_leagues = current.get(CONF_LEAGUES, DEFAULT_LEAGUES)
+        if not isinstance(current_leagues, list):
+            current_leagues = [current_leagues]
+        current_leagues = [str(x).strip().lower() for x in current_leagues]
 
         data_schema = vol.Schema(
             {
-                # ✅ keep your existing entry’s leagues; otherwise default to the same set
-                vol.Required(CONF_LEAGUES, default=current.get(CONF_LEAGUES, ["mlb", "nhl", "nba", "nfl"])): selector.SelectSelector(
+                vol.Required(CONF_LEAGUES, default=current_leagues): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=sorted(list(LEAGUES.keys())),
                         multiple=True,
@@ -74,7 +80,7 @@ class SportsTickerOptionsFlow(config_entries.OptionsFlow):
                 ),
                 vol.Optional(
                     CONF_POLL_INTERVAL,
-                    default=current.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
+                    default=int(current.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)),
                 ): vol.All(vol.Coerce(int), vol.Range(min=15, max=600)),
             }
         )

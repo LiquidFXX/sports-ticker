@@ -13,6 +13,34 @@ from .const import (
     LEAGUES,
 )
 
+# ✅ Pretty labels for UI, lowercase values for storage
+LEAGUE_LABELS = {
+    "nfl": "NFL",
+    "cfb": "CFB",
+    "mlb": "MLB",
+    "nba": "NBA",
+    "wnba": "WNBA",
+    "ncaam": "NCAAM",
+    "ncaaw": "NCAAW",
+    "nhl": "NHL",
+    "epl": "EPL",
+    "mls": "MLS",
+    "laliga": "LaLiga",
+    "bundesliga": "Bundesliga",
+    "seriea": "Serie A",
+    "ligue1": "Ligue 1",
+    "ucl": "UCL",
+    "uecl": "UECL",
+    "f1": "F1",
+    "nascar": "NASCAR",
+}
+
+# Build options list from LEAGUES keys, but display label nicely
+SELECT_OPTIONS = [
+    selector.SelectOptionDict(value=k, label=LEAGUE_LABELS.get(k, k.upper()))
+    for k in sorted(list(LEAGUES.keys()))
+]
+
 
 class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -27,9 +55,10 @@ class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema(
             {
+                # ✅ defaults must be lowercase keys (stored values)
                 vol.Required(CONF_LEAGUES, default=["mlb", "nfl"]): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=sorted(list(LEAGUES.keys())),
+                        options=SELECT_OPTIONS,      # ✅ label/value
                         multiple=True,
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
@@ -39,7 +68,6 @@ class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
             }
         )
-
         return self.async_show_form(step_id="user", data_schema=data_schema)
 
     @staticmethod
@@ -63,9 +91,12 @@ class SportsTickerOptionsFlow(config_entries.OptionsFlow):
 
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_LEAGUES, default=current.get(CONF_LEAGUES, ["mlb", "nfl"])): selector.SelectSelector(
+                vol.Required(
+                    CONF_LEAGUES,
+                    default=current.get(CONF_LEAGUES, ["mlb", "nfl"]),
+                ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=sorted(list(LEAGUES.keys())),
+                        options=SELECT_OPTIONS,      # ✅ label/value
                         multiple=True,
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
@@ -76,5 +107,4 @@ class SportsTickerOptionsFlow(config_entries.OptionsFlow):
                 ): vol.All(vol.Coerce(int), vol.Range(min=15, max=600)),
             }
         )
-
         return self.async_show_form(step_id="init", data_schema=data_schema)

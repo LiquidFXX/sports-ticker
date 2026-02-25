@@ -1,7 +1,7 @@
 {
   "domain": "sports_ticker",
   "name": "Sports Ticker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "documentation": "https://github.com/LiquidFXX/sports-ticker",
   "issue_tracker": "https://github.com/LiquidFXX/sports-ticker/issues",
   "codeowners": ["@LiquidFXX"],

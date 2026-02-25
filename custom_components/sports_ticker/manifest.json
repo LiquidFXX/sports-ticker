@@ -1,0 +1,11 @@
+{
+  "domain": "sports_ticker",
+  "name": "Sports Ticker",
+  "version": "1.0.0",
+  "documentation": "https://github.com/YOUR_GITHUB_USER/sports-ticker",
+  "issue_tracker": "https://github.com/YOUR_GITHUB_USER/sports-ticker/issues",
+  "codeowners": ["@YOUR_GITHUB_USER"],
+  "config_flow": true,
+  "iot_class": "cloud_polling",
+  "requirements": []
+}

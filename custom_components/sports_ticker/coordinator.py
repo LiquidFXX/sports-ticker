@@ -33,6 +33,7 @@ def _parse_dt(dt_str: str) -> datetime | None:
 def _pick_next_event(events: list[dict[str, Any]]) -> dict[str, Any] | None:
     now = datetime.now(timezone.utc)
     dated: list[tuple[datetime, dict[str, Any]]] = []
+
     for ev in events:
         dt = _parse_dt(ev.get("date", ""))
         if dt:
@@ -58,12 +59,15 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.session = aiohttp.ClientSession(timeout=TIMEOUT)
 
         poll = int(
-            entry.options.get(CONF_POLL_INTERVAL, entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL))
+            entry.options.get(
+                CONF_POLL_INTERVAL,
+                entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
+            )
         )
 
         super().__init__(
             hass=hass,
-            logger=LOGGER,  # ✅ FIX: must not be None
+            logger=LOGGER,  # ✅ must not be None
             name=DOMAIN,
             update_interval=timedelta(seconds=poll),
         )
@@ -78,9 +82,15 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise UpdateFailed(str(err)) from err
 
     async def _async_update_data(self) -> dict[str, Any]:
-        leagues = self.entry.options.get(CONF_LEAGUES, self.entry.data.get(CONF_LEAGUES, ["mlb", "nfl"]))
+        leagues = self.entry.options.get(
+            CONF_LEAGUES,
+            self.entry.data.get(CONF_LEAGUES, ["mlb", "nhl", "nba", "nfl"]),
+        )
         if not isinstance(leagues, list):
             leagues = [str(leagues)]
+
+        # normalize: handle accidental uppercase or whitespace
+        leagues = [str(x).strip().lower() for x in leagues]
 
         result: dict[str, Any] = {}
         fetched_at = datetime.now(timezone.utc).isoformat()

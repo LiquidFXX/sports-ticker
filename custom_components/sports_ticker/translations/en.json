@@ -1,0 +1,16 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Sports Ticker",
+        "description": "Creates ESPN scoreboard sensors for selected leagues.",
+        "data": {
+          "leagues": "Leagues",
+          "poll_interval": "Poll interval (seconds)",
+          "create_raw": "Create Raw scoreboard sensors",
+          "create_next": "Create Next/Ticker sensors"
+        }
+      }
+    }
+  }
+}

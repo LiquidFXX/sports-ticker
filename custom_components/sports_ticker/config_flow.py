@@ -9,11 +9,7 @@ from .const import (
     DOMAIN,
     CONF_LEAGUES,
     CONF_POLL_INTERVAL,
-    CONF_CREATE_RAW,
-    CONF_CREATE_NEXT,
     DEFAULT_POLL_INTERVAL,
-    DEFAULT_CREATE_RAW,
-    DEFAULT_CREATE_NEXT,
     LEAGUES,
 )
 
@@ -41,8 +37,6 @@ class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): vol.All(
                     vol.Coerce(int), vol.Range(min=15, max=600)
                 ),
-                vol.Optional(CONF_CREATE_RAW, default=DEFAULT_CREATE_RAW): bool,
-                vol.Optional(CONF_CREATE_NEXT, default=DEFAULT_CREATE_NEXT): bool,
             }
         )
 
@@ -76,11 +70,10 @@ class SportsTickerOptionsFlow(config_entries.OptionsFlow):
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
-                vol.Optional(CONF_POLL_INTERVAL, default=current.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)): vol.All(
-                    vol.Coerce(int), vol.Range(min=15, max=600)
-                ),
-                vol.Optional(CONF_CREATE_RAW, default=current.get(CONF_CREATE_RAW, DEFAULT_CREATE_RAW)): bool,
-                vol.Optional(CONF_CREATE_NEXT, default=current.get(CONF_CREATE_NEXT, DEFAULT_CREATE_NEXT)): bool,
+                vol.Optional(
+                    CONF_POLL_INTERVAL,
+                    default=current.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
+                ): vol.All(vol.Coerce(int), vol.Range(min=15, max=600)),
             }
         )
 

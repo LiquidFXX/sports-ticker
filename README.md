@@ -2,6 +2,11 @@
 
 A lightweight Home Assistant custom integration that creates **ESPN Scoreboard Raw** sensors (with `events`, `leagues`, `day`, `season`) for use in dashboards — especially ticker-style Lovelace cards.
 
+As of **v0.0.11**, the integration also includes **configurable ticker options**:
+- ✅ Select which league sensors to create
+- ✅ Adjust ticker scroll speed
+- ✅ Light/Dark theme option (used by the example ticker card)
+
 ---
 
 ## What this integration creates
@@ -10,13 +15,19 @@ After install + setup you’ll get sensors like:
 
 - `sensor.espn_mlb_scoreboard_raw`
 - `sensor.espn_nfl_scoreboard_raw`
+- (optional) `sensor.espn_nba_scoreboard_raw`, `sensor.espn_nhl_scoreboard_raw`, `sensor.espn_wnba_scoreboard_raw`, `sensor.espn_cfb_scoreboard_raw`
 
-Each sensor includes these attributes (used by the ticker card):
+Each sensor includes these attributes (used by ticker cards):
 
 - `events` (list)
 - `leagues`
 - `day`
 - `season`
+
+### v0.0.11 Added Attributes
+Each raw sensor also exposes:
+- `ticker_speed` (int) — controls scroll speed in the example card
+- `ticker_theme` (`light` or `dark`) — controls Light/Dark styling in the example card
 
 ---
 
@@ -35,32 +46,56 @@ Each sensor includes these attributes (used by the ticker card):
 
 ---
 
+## Configuration (v0.0.11)
+
+After adding the integration you can configure it in:
+**Settings → Devices & services → Sports Ticker → Configure**
+
+### Options
+- **Leagues**: Choose which sensors to create (ex: `mlb`, `nfl`, etc.)
+- **Poll Interval**: How often Home Assistant fetches ESPN data (seconds)
+- **Ticker Speed**: Controls marquee speed for the example card  
+  - `6 = slow` … `30 = fast`
+- **Ticker Theme**: `light` or `dark` (used by the example ticker card)
+
+> **Note:** These options are exposed to dashboards via sensor attributes (`ticker_speed`, `ticker_theme`).
+
+---
+
 ## Dashboard ticker card (Button Card + Card Mod)
 
+This repository includes a ready-to-use ticker card that reads data from:
+
+- `sensor.espn_<league>_scoreboard_raw` → attribute `events`
+
 ### Requirements
-This card requires:
+The example card requires:
 - **button-card** (`custom:button-card`)
 - **card-mod**
 
 Install both via HACS (**Frontend**) if you don’t already have them.
 
-> **Important:** Set `sport` as uppercase (example: `MLB`, `NFL`).  
-> Your card’s logo mapping uses uppercase keys.
-
 ---
 
-### MLB ticker card (copy/paste)
+## MLB ticker card (recommended)
+
+✅ This card automatically uses:
+- `ticker_speed` from the sensor for scroll speed
+- `ticker_theme` from the sensor for Light/Dark styling
 
 <details>
-<summary><b>Click to expand the full MLB ticker card</b></summary>
+<summary><b>Click to expand the full MLB ticker card (v0.0.11)</b></summary>
 
 ```yaml
 type: custom:button-card
 show_name: false
 show_state: false
+
+# ✅ ONLY change these two to switch sports
 variables:
   sport: MLB
   sensor: sensor.espn_mlb_scoreboard_raw
+
 styles:
   card:
     - border-radius: 14px
@@ -72,25 +107,25 @@ styles:
   custom_fields:
     ticker:
       - padding: 0px
+
 custom_fields:
   ticker: |
     [[[
-      const sport = variables.sport || 'MLB';
+      const sport = (variables.sport || 'MLB').toUpperCase();
       const sensorId = variables.sensor || 'sensor.espn_mlb_scoreboard_raw';
 
       const raw = states[sensorId];
       const ev = raw?.attributes?.events || [];
 
+      // ✅ Theme + speed come from integration options exposed as sensor attributes
+      const theme = String(raw?.attributes?.ticker_theme ?? 'light').toLowerCase();
+      const div = Number(raw?.attributes?.ticker_speed ?? 12);
+      const safeDiv = Number.isFinite(div) ? Math.max(6, Math.min(30, div)) : 12;
+
       // ---- logo helpers (prefer feed logo; fallback ESPN CDN for NBA/MLB/NFL/NHL/...) ----
       const leagueFromSport = (s) => {
-        const map = {
-          NBA: 'nba',
-          WNBA: 'wnba',
-          MLB: 'mlb',
-          NFL: 'nfl',
-          NHL: 'nhl'
-        };
-        return map[s] || null; // soccer + college usually have feed logos, so fallback not needed
+        const map = { NBA:'nba', WNBA:'wnba', MLB:'mlb', NFL:'nfl', NHL:'nhl' };
+        return map[s] || null;
       };
 
       const nbaSlug = (abbr) => {
@@ -116,7 +151,7 @@ custom_fields:
         if (direct) return direct;
 
         const league = leagueFromSport(sport);
-        if (!league) return ''; // soccer/college: rely on feed logo
+        if (!league) return '';
         const slug = slugFor(abbr);
         return slug ? `https://a.espncdn.com/i/teamlogos/${league}/500/${slug}.png` : '';
       };
@@ -155,12 +190,17 @@ custom_fields:
 
       if (!ev.length) {
         return `
-          <div class="bar" style="--dur:45s">
+          <div class="bar ${theme}" style="--dur:45s">
             <div class="wrap">
               <div class="marquee">
                 <div class="tile">
-                  <div class="top"><span class="pill upcoming">NO GAMES</span><span class="pill meta">${sport}</span></div>
-                  <div class="teams one"><div class="row"><span class="abbr">No ${sport} games today</span></div></div>
+                  <div class="top">
+                    <span class="pill upcoming">NO GAMES</span>
+                    <span class="pill meta">${sport}</span>
+                  </div>
+                  <div class="teams one">
+                    <div class="row"><span class="abbr">No ${sport} games today</span></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -223,30 +263,56 @@ custom_fields:
       });
 
       const textForSpeed = speedTextParts.join(' • ');
-      const seconds = Math.round(textForSpeed.length / 12);
+      const seconds = Math.round(textForSpeed.length / safeDiv);
       const dur = Math.max(22, Math.min(90, seconds)) + 's';
 
       return `
-        <div class="bar" style="--dur:${dur}">
+        <div class="bar ${theme}" style="--dur:${dur}">
           <div class="wrap">
             <div class="marquee">${tiles.join(`<div class="sep"></div>`)}</div>
           </div>
         </div>`;
     ]]]
+
 card_mod:
   style: |
     .bar{
       min-height: 60px;
-      background: rgba(245,245,245,0.98);
       display:flex;
       align-items:center;
     }
+
+    .bar.light{
+      background: rgba(245,245,245,0.98);
+      --pill-bg: rgba(255,255,255,0.92);
+      --pill-border: rgba(0,0,0,0.12);
+      --pill-text: rgba(0,0,0,0.78);
+      --meta-text: rgba(0,0,0,0.58);
+      --row-text: rgba(0,0,0,0.82);
+      --sep: rgba(0,0,0,0.10);
+      --wdot: rgba(0,0,0,0.10);
+      --wdot-border: rgba(0,0,0,0.12);
+    }
+
+    .bar.dark{
+      background: rgba(20,20,20,0.92);
+      --pill-bg: rgba(0,0,0,0.35);
+      --pill-border: rgba(255,255,255,0.14);
+      --pill-text: rgba(255,255,255,0.88);
+      --meta-text: rgba(255,255,255,0.60);
+      --row-text: rgba(255,255,255,0.90);
+      --sep: rgba(255,255,255,0.10);
+      --wdot: rgba(255,255,255,0.14);
+      --wdot-border: rgba(255,255,255,0.14);
+    }
+
     .wrap{
       overflow:hidden;
       width:100%;
       -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%);
               mask-image: linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%);
     }
+
     .marquee{
       display:inline-flex;
       align-items:center;
@@ -271,7 +337,7 @@ card_mod:
     }
     .sep{
       height:44px;
-      border-right:1px solid rgba(0,0,0,0.10);
+      border-right:1px solid var(--sep);
       margin:0 2px;
     }
     .top{ display:flex; gap:6px; align-items:center; }
@@ -281,9 +347,9 @@ card_mod:
       font-weight:900;
       padding:2px 7px;
       border-radius:999px;
-      border:1px solid rgba(0,0,0,0.12);
-      color: rgba(0,0,0,0.78);
-      background: rgba(255,255,255,0.92);
+      border:1px solid var(--pill-border);
+      color: var(--pill-text);
+      background: var(--pill-bg);
       letter-spacing:.4px;
     }
     .pill.live{
@@ -291,7 +357,13 @@ card_mod:
       border-color: rgba(208,0,0,0.92);
       color:#fff;
     }
-    .pill.meta{ color: rgba(0,0,0,0.58); }
+    .pill.final{
+      background: rgba(0,0,0,0.08);
+    }
+    .bar.dark .pill.final{
+      background: rgba(255,255,255,0.10);
+    }
+    .pill.meta{ color: var(--meta-text); }
 
     .teams{ display:flex; flex-direction:column; gap:3px; }
     .row{ display:flex; align-items:center; gap:8px; line-height:1.05; }
@@ -300,8 +372,8 @@ card_mod:
       width:8px;
       height:8px;
       border-radius:50%;
-      background: rgba(0,0,0,0.10);
-      border: 1px solid rgba(0,0,0,0.12);
+      background: var(--wdot);
+      border: 1px solid var(--wdot-border);
     }
     .wdot.on{
       background:#2ecc71;
@@ -319,7 +391,7 @@ card_mod:
     .abbr{
       font-size:12px;
       font-weight:900;
-      color: rgba(0,0,0,0.82);
+      color: var(--row-text);
       min-width:36px;
       letter-spacing:.3px;
     }
@@ -327,5 +399,5 @@ card_mod:
       margin-left:auto;
       font-size:12px;
       font-weight:1000;
-      color: rgba(0,0,0,0.82);
+      color: var(--row-text);
     }

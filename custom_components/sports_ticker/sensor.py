@@ -11,6 +11,26 @@ from .const import DOMAIN, CONF_LEAGUES, LEAGUES
 from .coordinator import SportsTickerCoordinator
 
 
+def _normalize_leagues(value) -> list[str]:
+    """Normalize stored leagues into list[str] of known league keys."""
+    if value is None:
+        return []
+    # Sometimes multi-select style storage ends up as dict: {"mlb": True, "nfl": True}
+    if isinstance(value, dict):
+        value = [k for k, v in value.items() if v]
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list):
+        value = list(value)
+
+    out: list[str] = []
+    for v in value:
+        k = str(v).strip().lower()
+        if k in LEAGUES and k not in out:
+            out.append(k)
+    return out
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -18,13 +38,11 @@ async def async_setup_entry(
 ) -> None:
     coordinator: SportsTickerCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    leagues = entry.options.get(CONF_LEAGUES, entry.data.get(CONF_LEAGUES, ["mlb", "nfl"]))
-    if not isinstance(leagues, list):
-        leagues = [str(leagues)]
-    leagues = [str(x).strip().lower() for x in leagues]
+    stored = entry.options.get(CONF_LEAGUES, entry.data.get(CONF_LEAGUES, ["mlb", "nfl"]))
+    leagues = _normalize_leagues(stored)
 
     async_add_entities(
-        [ESPNRawScoreboard(coordinator, lg) for lg in leagues if lg in LEAGUES],
+        [ESPNRawScoreboard(coordinator, lg) for lg in leagues],
         update_before_add=True,
     )
 
@@ -36,7 +54,7 @@ class ESPNRawScoreboard(SensorEntity):
         self.coordinator = coordinator
         self.league = league
 
-        # Makes entity_id become sensor.espn_<league>_scoreboard_raw
+        # Ensures entity_id is sensor.espn_<league>_scoreboard_raw
         self._attr_unique_id = f"espn_{league}_scoreboard_raw"
         self._attr_name = f"ESPN {league.upper()} Scoreboard Raw"
 

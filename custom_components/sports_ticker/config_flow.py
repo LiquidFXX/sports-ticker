@@ -27,7 +27,8 @@ class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_LEAGUES, default=["mlb", "nfl"]): selector.SelectSelector(
+                # ✅ default includes MLB + NHL + NBA + NFL
+                vol.Required(CONF_LEAGUES, default=["mlb", "nhl", "nba", "nfl"]): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=sorted(list(LEAGUES.keys())),
                         multiple=True,
@@ -63,7 +64,11 @@ class SportsTickerOptionsFlow(config_entries.OptionsFlow):
 
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_LEAGUES, default=current.get(CONF_LEAGUES, ["mlb", "nfl"])): selector.SelectSelector(
+                # ✅ options default also includes MLB + NHL + NBA + NFL
+                vol.Required(
+                    CONF_LEAGUES,
+                    default=current.get(CONF_LEAGUES, ["mlb", "nhl", "nba", "nfl"]),
+                ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=sorted(list(LEAGUES.keys())),
                         multiple=True,

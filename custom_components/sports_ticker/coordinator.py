@@ -63,7 +63,7 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         super().__init__(
             hass=hass,
-            logger=LOGGER,  # ✅ FIX: must not be None
+            logger=LOGGER,  # ✅ must not be None
             name=DOMAIN,
             update_interval=timedelta(seconds=poll),
         )
@@ -78,7 +78,11 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise UpdateFailed(str(err)) from err
 
     async def _async_update_data(self) -> dict[str, Any]:
-        leagues = self.entry.options.get(CONF_LEAGUES, self.entry.data.get(CONF_LEAGUES, ["mlb", "nfl"]))
+        # ✅ default includes NBA + NHL (and MLB + NFL)
+        leagues = self.entry.options.get(
+            CONF_LEAGUES,
+            self.entry.data.get(CONF_LEAGUES, ["mlb", "nhl", "nba", "nfl"]),
+        )
         if not isinstance(leagues, list):
             leagues = [str(leagues)]
 
@@ -100,6 +104,9 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "fetched_at": fetched_at,
                     "raw": raw,
                     "events": events,
+                    "leagues": raw.get("leagues"),
+                    "day": raw.get("day"),
+                    "season": raw.get("season"),
                     "next": nxt,
                 }
             except Exception as e:

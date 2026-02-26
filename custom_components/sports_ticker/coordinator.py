@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import aiohttp
@@ -9,83 +9,112 @@ import aiohttp
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, CONF_SPORTS, CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL, LEAGUES
+from .const import (
+    DOMAIN,
+    CONF_LEAGUES,
+    CONF_POLL_INTERVAL,
+    DEFAULT_POLL_INTERVAL,
+    LEAGUES,
+)
 
+LOGGER = logging.getLogger(__name__)
 
-ESPN_SCOREBOARD = "https://site.web.api.espn.com/apis/v2/sports/{league}/scoreboard"
+TIMEOUT = aiohttp.ClientTimeout(total=20)
 
 
 def _parse_dt(dt_str: str) -> datetime | None:
-    # ESPN returns ISO8601 like "2026-02-23T18:05Z"
     try:
         return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
     except Exception:
         return None
 
 
+def _pick_next_event(events: list[dict[str, Any]]) -> dict[str, Any] | None:
+    now = datetime.now(timezone.utc)
+    dated: list[tuple[datetime, dict[str, Any]]] = []
+
+    for ev in events:
+        dt = _parse_dt(ev.get("date", ""))
+        if dt:
+            dated.append((dt, ev))
+
+    if not dated:
+        return events[0] if events else None
+
+    dated.sort(key=lambda x: x[0])
+
+    for dt, ev in dated:
+        if dt >= now:
+            return ev
+
+    return dated[0][1]
+
+
 class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    def __init__(self, hass: HomeAssistant, entry):
+    def __init__(self, hass: HomeAssistant, entry) -> None:
         self.hass = hass
         self.entry = entry
-        self._session = aiohttp.ClientSession()
+        self.session = aiohttp.ClientSession(timeout=TIMEOUT)
 
-        poll = entry.options.get(CONF_POLL_INTERVAL, entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL))
-        super().__init__(
-            hass,
-            logger=None,
-            name=DOMAIN,
-            update_interval=timedelta(seconds=int(poll)),
+        poll = int(
+            entry.options.get(
+                CONF_POLL_INTERVAL,
+                entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
+            )
         )
 
+        super().__init__(
+            hass=hass,
+            logger=LOGGER,
+            name=DOMAIN,
+            update_interval=timedelta(seconds=poll),
+        )
+
+    async def _fetch(self, url: str) -> dict[str, Any]:
+        try:
+            async with self.session.get(url) as resp:
+                if resp.status != 200:
+                    raise UpdateFailed(f"ESPN HTTP {resp.status} for {url}")
+                return await resp.json()
+        except Exception as err:
+            raise UpdateFailed(str(err)) from err
+
     async def _async_update_data(self) -> dict[str, Any]:
-        sports = self.entry.options.get(CONF_SPORTS, self.entry.data.get(CONF_SPORTS, ["mlb"]))
-        # If config_flow ended up giving a string like "mlb,nfl", normalize:
-        if isinstance(sports, str):
-            sports = [s.strip() for s in sports.split(",") if s.strip()]
+        leagues = self.entry.options.get(
+            CONF_LEAGUES,
+            self.entry.data.get(CONF_LEAGUES, ["mlb", "nfl"]),
+        )
+        if not isinstance(leagues, list):
+            leagues = [str(leagues)]
 
-        async def fetch_one(sport_key: str) -> tuple[str, Any]:
-            league = LEAGUES.get(sport_key)
-            if not league:
-                return sport_key, {"error": "unknown_league"}
+        leagues = [str(x).strip().lower() for x in leagues]
 
-            url = ESPN_SCOREBOARD.format(league=league)
+        result: dict[str, Any] = {}
+        fetched_at = datetime.now(timezone.utc).isoformat()
+
+        for key in leagues:
+            url = LEAGUES.get(key)
+            if not url:
+                result[key] = {"error": "unknown_league", "fetched_at": fetched_at}
+                continue
+
             try:
-                async with self._session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                    if resp.status != 200:
-                        raise UpdateFailed(f"ESPN HTTP {resp.status}")
-                    data = await resp.json()
+                raw = await self._fetch(url)
+                events = raw.get("events") or []
+                nxt = _pick_next_event(events)
+
+                result[key] = {
+                    "fetched_at": fetched_at,
+                    "events": events,
+                    "leagues": raw.get("leagues"),
+                    "day": raw.get("day"),
+                    "season": raw.get("season"),
+                    "next": nxt,
+                }
             except Exception as e:
-                return sport_key, {"error": str(e)}
+                result[key] = {"error": str(e), "fetched_at": fetched_at}
 
-            events = data.get("events") or []
-            # Sort by date, pick next upcoming or most recent
-            def key_fn(ev):
-                dt = _parse_dt(ev.get("date", ""))
-                return dt or datetime.max.replace(tzinfo=None)
+        return result
 
-            events_sorted = sorted(events, key=key_fn)
-
-            next_event = None
-            now = datetime.now(tz=datetime.now().astimezone().tzinfo)
-
-            for ev in events_sorted:
-                dt = _parse_dt(ev.get("date", ""))
-                if dt and dt >= now:
-                    next_event = ev
-                    break
-
-            # fallback to first event if nothing upcoming
-            if not next_event and events_sorted:
-                next_event = events_sorted[0]
-
-            return sport_key, {
-                "events": events_sorted[:25],
-                "next": next_event,
-                "fetched_at": datetime.utcnow().isoformat() + "Z",
-            }
-
-        results = await asyncio.gather(*(fetch_one(s) for s in sports))
-        return {k: v for k, v in results}
-
-    async def async_shutdown(self):
-        await self._session.close()
+    async def async_shutdown(self) -> None:
+        await self.session.close()

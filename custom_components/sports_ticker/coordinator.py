@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -16,6 +17,8 @@ from .const import (
     LEAGUES,
 )
 
+LOGGER = logging.getLogger(__name__)
+
 TIMEOUT = aiohttp.ClientTimeout(total=20)
 
 
@@ -29,7 +32,7 @@ def _parse_dt(dt_str: str) -> datetime | None:
 
 def _pick_next_event(events: list[dict[str, Any]]) -> dict[str, Any] | None:
     now = datetime.now(timezone.utc)
-    dated = []
+    dated: list[tuple[datetime, dict[str, Any]]] = []
     for ev in events:
         dt = _parse_dt(ev.get("date", ""))
         if dt:
@@ -60,7 +63,7 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         super().__init__(
             hass=hass,
-            logger=None,
+            logger=LOGGER,  # ✅ FIX: must not be None
             name=DOMAIN,
             update_interval=timedelta(seconds=poll),
         )
@@ -82,7 +85,6 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         result: dict[str, Any] = {}
         fetched_at = datetime.now(timezone.utc).isoformat()
 
-        # Fetch all selected leagues
         for key in leagues:
             url = LEAGUES.get(key)
             if not url:

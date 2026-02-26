@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import voluptuous as vol
+
 from homeassistant import config_entries
 from homeassistant.helpers import selector
 
@@ -21,39 +23,33 @@ class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         if user_input is not None:
+            leagues = user_input.get(CONF_LEAGUES) or []
+            if isinstance(leagues, str):
+                leagues = [leagues]
+            user_input[CONF_LEAGUES] = leagues
             return self.async_create_entry(title="Sports Ticker", data=user_input)
 
-        data_schema = {
-            CONF_LEAGUES: selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=sorted(list(LEAGUES.keys())),
-                    multiple=True,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
-            ),
-            CONF_POLL_INTERVAL: selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=15, max=600, step=5, mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="sec"
-                )
-            ),
-            CONF_CREATE_RAW: selector.BooleanSelector(),
-            CONF_CREATE_NEXT: selector.BooleanSelector(),
-        }
-
-        defaults = {
-            CONF_LEAGUES: ["mlb", "nfl"],
-            CONF_POLL_INTERVAL: DEFAULT_POLL_INTERVAL,
-            CONF_CREATE_RAW: DEFAULT_CREATE_RAW,
-            CONF_CREATE_NEXT: DEFAULT_CREATE_NEXT,
-        }
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=selector.schema(data_schema),
-            description_placeholders={},
-            last_step=True,
+        data_schema = vol.Schema(
+            {
+                vol.Required(CONF_LEAGUES, default=["mlb", "nfl"]): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=sorted(list(LEAGUES.keys())),
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): vol.All(
+                    vol.Coerce(int), vol.Range(min=15, max=600)
+                ),
+                vol.Optional(CONF_CREATE_RAW, default=DEFAULT_CREATE_RAW): bool,
+                vol.Optional(CONF_CREATE_NEXT, default=DEFAULT_CREATE_NEXT): bool,
+            }
         )
+        return self.async_show_form(step_id="user", data_schema=data_schema)
+
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        return SportsTickerOptionsFlow(config_entry)
 
 
 class SportsTickerOptionsFlow(config_entries.OptionsFlow):
@@ -62,34 +58,28 @@ class SportsTickerOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
+            leagues = user_input.get(CONF_LEAGUES) or []
+            if isinstance(leagues, str):
+                leagues = [leagues]
+            user_input[CONF_LEAGUES] = leagues
             return self.async_create_entry(title="", data=user_input)
 
         current = {**self.config_entry.data, **self.config_entry.options}
 
-        data_schema = {
-            CONF_LEAGUES: selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=sorted(list(LEAGUES.keys())),
-                    multiple=True,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
-            ),
-            CONF_POLL_INTERVAL: selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=15, max=600, step=5, mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="sec"
-                )
-            ),
-            CONF_CREATE_RAW: selector.BooleanSelector(),
-            CONF_CREATE_NEXT: selector.BooleanSelector(),
-        }
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=selector.schema(data_schema),
+        data_schema = vol.Schema(
+            {
+                vol.Required(CONF_LEAGUES, default=current.get(CONF_LEAGUES, ["mlb", "nfl"])): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=sorted(list(LEAGUES.keys())),
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_POLL_INTERVAL, default=current.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)): vol.All(
+                    vol.Coerce(int), vol.Range(min=15, max=600)
+                ),
+                vol.Optional(CONF_CREATE_RAW, default=current.get(CONF_CREATE_RAW, DEFAULT_CREATE_RAW)): bool,
+                vol.Optional(CONF_CREATE_NEXT, default=current.get(CONF_CREATE_NEXT, DEFAULT_CREATE_NEXT)): bool,
+            }
         )
-
-
-@config_entries.HANDLERS.register(DOMAIN)
-def _create_options_flow(config_entry):
-    return SportsTickerOptionsFlow(config_entry)
+        return self.async_show_form(step_id="init", data_schema=data_schema)

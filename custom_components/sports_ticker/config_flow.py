@@ -14,6 +14,9 @@ from .const import (
 )
 
 
+DEFAULT_LEAGUES = ["mlb", "nhl", "nba", "nfl"]
+
+
 class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
@@ -27,12 +30,11 @@ class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema(
             {
-                # ✅ default includes MLB + NHL + NBA + NFL
-                vol.Required(CONF_LEAGUES, default=["mlb", "nhl", "nba", "nfl"]): selector.SelectSelector(
+                vol.Required(CONF_LEAGUES, default=DEFAULT_LEAGUES): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=sorted(list(LEAGUES.keys())),
                         multiple=True,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        # ✅ no "mode=" to avoid selector enum differences
                     )
                 ),
                 vol.Optional(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): vol.All(
@@ -64,15 +66,13 @@ class SportsTickerOptionsFlow(config_entries.OptionsFlow):
 
         data_schema = vol.Schema(
             {
-                # ✅ options default also includes MLB + NHL + NBA + NFL
                 vol.Required(
                     CONF_LEAGUES,
-                    default=current.get(CONF_LEAGUES, ["mlb", "nhl", "nba", "nfl"]),
+                    default=current.get(CONF_LEAGUES, DEFAULT_LEAGUES),
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=sorted(list(LEAGUES.keys())),
                         multiple=True,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
                 vol.Optional(

@@ -7,15 +7,21 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, CONF_LEAGUES, LEAGUES
+from .const import (
+    DOMAIN,
+    CONF_LEAGUES,
+    LEAGUES,
+    CONF_TICKER_SPEED,
+    DEFAULT_TICKER_SPEED,
+    CONF_TICKER_THEME,
+    DEFAULT_TICKER_THEME,
+)
 from .coordinator import SportsTickerCoordinator
 
 
 def _normalize_leagues(value) -> list[str]:
-    """Normalize stored leagues into list[str] of known league keys."""
     if value is None:
         return []
-    # Sometimes multi-select style storage ends up as dict: {"mlb": True, "nfl": True}
     if isinstance(value, dict):
         value = [k for k, v in value.items() if v]
     if isinstance(value, str):
@@ -54,7 +60,6 @@ class ESPNRawScoreboard(SensorEntity):
         self.coordinator = coordinator
         self.league = league
 
-        # Ensures entity_id is sensor.espn_<league>_scoreboard_raw
         self._attr_unique_id = f"espn_{league}_scoreboard_raw"
         self._attr_name = f"ESPN {league.upper()} Scoreboard Raw"
 
@@ -73,9 +78,17 @@ class ESPNRawScoreboard(SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         d = self.coordinator.data.get(self.league, {})
+
+        # Pull options from entry (options override data)
+        entry = self.coordinator.entry
+        speed = entry.options.get(CONF_TICKER_SPEED, entry.data.get(CONF_TICKER_SPEED, DEFAULT_TICKER_SPEED))
+        theme = entry.options.get(CONF_TICKER_THEME, entry.data.get(CONF_TICKER_THEME, DEFAULT_TICKER_THEME))
+
         return {
             "events": d.get("events", []),
             "leagues": d.get("leagues"),
             "day": d.get("day"),
             "season": d.get("season"),
+            "ticker_speed": speed,
+            "ticker_theme": theme,
         }

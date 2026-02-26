@@ -1,8 +1,65 @@
+# Sports Ticker (ESPN Scoreboard Raw)
+
+A lightweight Home Assistant custom integration that creates **ESPN Scoreboard Raw** sensors (with `events`, `leagues`, `day`, `season`) for use in dashboards — especially ticker-style Lovelace cards.
+
+---
+
+## What this integration creates
+
+After install + setup you’ll get sensors like:
+
+- `sensor.espn_mlb_scoreboard_raw`
+- `sensor.espn_nfl_scoreboard_raw`
+
+Each sensor includes these attributes (used by the ticker card):
+
+- `events` (list)
+- `leagues`
+- `day`
+- `season`
+
+---
+
+## Installation (HACS)
+
+1. In Home Assistant, go to **HACS → Integrations**
+2. Add this repo as a **Custom repository** (type: **Integration**) if needed
+3. Install **Sports Ticker**
+4. **Restart Home Assistant** (required for `custom_components`)
+5. Go to **Settings → Devices & services → Add integration → Sports Ticker**
+
+✅ Verify sensors:
+- Go to **Developer Tools → States**
+- Search for `sensor.espn_mlb_scoreboard_raw`
+- Confirm it has an `events` attribute
+
+---
+
+## Dashboard ticker card (Button Card + Card Mod)
+
+### Requirements
+This card requires:
+- **button-card** (`custom:button-card`)
+- **card-mod**
+
+Install both via HACS (**Frontend**) if you don’t already have them.
+
+> **Important:** Set `sport` as uppercase (example: `MLB`, `NFL`).  
+> Your card’s logo mapping uses uppercase keys.
+
+---
+
+### MLB ticker card (copy/paste)
+
+<details>
+<summary><b>Click to expand the full MLB ticker card</b></summary>
+
+```yaml
 type: custom:button-card
 show_name: false
 show_state: false
 variables:
-  sport: mlb
+  sport: MLB
   sensor: sensor.espn_mlb_scoreboard_raw
 styles:
   card:
@@ -97,7 +154,6 @@ custom_fields:
       };
 
       if (!ev.length) {
-        // Constant-ish speed even when empty
         return `
           <div class="bar" style="--dur:45s">
             <div class="wrap">
@@ -111,7 +167,6 @@ custom_fields:
           </div>`;
       }
 
-      // Build tiles + a plain-text string for duration calculation
       const tiles = [];
       const speedTextParts = [];
 
@@ -138,14 +193,12 @@ custom_fields:
 
         const showScores = (stState !== 'pre');
 
-        // winner dot
         let awayWin = false, homeWin = false;
         if (showScores && aScore != null && hScore != null && aScore !== hScore) {
           awayWin = aScore > hScore;
           homeWin = hScore > aScore;
         }
 
-        // for speed calc (plain text)
         speedTextParts.push(`${aAbbr} ${aScoreRaw} ${hAbbr} ${hScoreRaw} ${stShort}`);
 
         tiles.push(`
@@ -169,9 +222,7 @@ custom_fields:
         `);
       });
 
-      // ✅ Constant perceived speed: duration scales with content length
       const textForSpeed = speedTextParts.join(' • ');
-      // tweak divisor to taste: smaller = slower, larger = faster
       const seconds = Math.round(textForSpeed.length / 12);
       const dur = Math.max(22, Math.min(90, seconds)) + 's';
 
@@ -196,8 +247,6 @@ card_mod:
       -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%);
               mask-image: linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%);
     }
-
-    /* ✅ duration is now variable via --dur */
     .marquee{
       display:inline-flex;
       align-items:center;

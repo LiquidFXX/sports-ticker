@@ -1,179 +1,282 @@
-################################################################################
-# ESPN TICKER SENSORS (TEMPLATE)
-# Put this in: template.yaml
-################################################################################
+type: custom:button-card
+show_name: false
+show_state: false
+variables:
+  sport: mlb
+  sensor: sensor.espn_mlb_scoreboard_raw
+styles:
+  card:
+    - border-radius: 14px
+    - overflow: hidden
+    - padding: 0px
+    - background: rgba(255,255,255,0.92)
+    - border: 1px solid rgba(0,0,0,0.10)
+    - box-shadow: 0 10px 22px rgba(0,0,0,0.18)
+  custom_fields:
+    ticker:
+      - padding: 0px
+custom_fields:
+  ticker: |
+    [[[
+      const sport = variables.sport || 'MLB';
+      const sensorId = variables.sensor || 'sensor.espn_mlb_scoreboard_raw';
 
-- sensor:
-    # ======================================================================
-    # NFL
-    # ======================================================================
-    - name: ESPN NFL Ticker
-      unique_id: espn_nfl_ticker
-      icon: mdi:scoreboard
-      state: >
-        {% set ev = state_attr('sensor.espn_nfl_scoreboard_raw','events') | default([]) %}
-        {{ ev | length }}
-      attributes:
-        ticker: >
-          {% set ev = state_attr('sensor.espn_nfl_scoreboard_raw','events') | default([]) %}
-          {% set out = [] %}
-          {% for e in ev %}
-            {% set c = (e.competitions[0] if e.competitions is defined and e.competitions|length>0 else none) %}
-            {% if c %}
-              {% set comps = c.competitors | default([]) %}
-              {% set away = (comps | selectattr('homeAway','equalto','away') | list | first) %}
-              {% set home = (comps | selectattr('homeAway','equalto','home') | list | first) %}
-              {% set a = away.team.abbreviation if away and away.team is defined else 'AWY' %}
-              {% set h = home.team.abbreviation if home and home.team is defined else 'HME' %}
-              {% set as = away.score if away and away.score is defined else '-' %}
-              {% set hs = home.score if home and home.score is defined else '-' %}
-              {% set s = c.status.type.shortDetail if c.status is defined and c.status.type is defined else '' %}
-              {% set _ = out.append(a ~ " " ~ as ~ " - " ~ h ~ " " ~ hs ~ " • " ~ s) %}
-            {% endif %}
-          {% endfor %}
-          {{ out | join("   |   ") if out|length>0 else "No games found" }}
+      const raw = states[sensorId];
+      const ev = raw?.attributes?.events || [];
 
-    # ======================================================================
-    # CFB
-    # ======================================================================
-    - name: ESPN CFB Ticker
-      unique_id: espn_cfb_ticker
-      icon: mdi:scoreboard
-      state: >
-        {% set ev = state_attr('sensor.espn_cfb_scoreboard_raw','events') | default([]) %}
-        {{ ev | length }}
-      attributes:
-        ticker: >
-          {% set ev = state_attr('sensor.espn_cfb_scoreboard_raw','events') | default([]) %}
-          {% set out = [] %}
-          {% for e in ev %}
-            {% set c = (e.competitions[0] if e.competitions is defined and e.competitions|length>0 else none) %}
-            {% if c %}
-              {% set comps = c.competitors | default([]) %}
-              {% set away = (comps | selectattr('homeAway','equalto','away') | list | first) %}
-              {% set home = (comps | selectattr('homeAway','equalto','home') | list | first) %}
-              {% set a = away.team.abbreviation if away and away.team is defined else 'AWY' %}
-              {% set h = home.team.abbreviation if home and home.team is defined else 'HME' %}
-              {% set as = away.score if away and away.score is defined else '-' %}
-              {% set hs = home.score if home and home.score is defined else '-' %}
-              {% set s = c.status.type.shortDetail if c.status is defined and c.status.type is defined else '' %}
-              {% set _ = out.append(a ~ " " ~ as ~ " - " ~ h ~ " " ~ hs ~ " • " ~ s) %}
-            {% endif %}
-          {% endfor %}
-          {{ out | join("   |   ") if out|length>0 else "No games found" }}
+      // ---- logo helpers (prefer feed logo; fallback ESPN CDN for NBA/MLB/NFL/NHL/...) ----
+      const leagueFromSport = (s) => {
+        const map = {
+          NBA: 'nba',
+          WNBA: 'wnba',
+          MLB: 'mlb',
+          NFL: 'nfl',
+          NHL: 'nhl'
+        };
+        return map[s] || null; // soccer + college usually have feed logos, so fallback not needed
+      };
 
-    # ======================================================================
-    # MLB
-    # ======================================================================
-    - name: ESPN MLB Ticker
-      unique_id: espn_mlb_ticker
-      icon: mdi:baseball
-      state: >
-        {% set ev = state_attr('sensor.espn_mlb_scoreboard_raw','events') | default([]) %}
-        {{ ev | length }}
-      attributes:
-        ticker: >
-          {% set ev = state_attr('sensor.espn_mlb_scoreboard_raw','events') | default([]) %}
-          {% set out = [] %}
-          {% for e in ev %}
-            {% set c = (e.competitions[0] if e.competitions is defined and e.competitions|length>0 else none) %}
-            {% if c %}
-              {% set comps = c.competitors | default([]) %}
-              {% set away = (comps | selectattr('homeAway','equalto','away') | list | first) %}
-              {% set home = (comps | selectattr('homeAway','equalto','home') | list | first) %}
-              {% set a = away.team.abbreviation if away and away.team is defined else 'AWY' %}
-              {% set h = home.team.abbreviation if home and home.team is defined else 'HME' %}
-              {% set as = away.score if away and away.score is defined else '-' %}
-              {% set hs = home.score if home and home.score is defined else '-' %}
-              {% set s = c.status.type.shortDetail if c.status is defined and c.status.type is defined else '' %}
-              {% set _ = out.append(a ~ " " ~ as ~ " - " ~ h ~ " " ~ hs ~ " • " ~ s) %}
-            {% endif %}
-          {% endfor %}
-          {{ out | join("   |   ") if out|length>0 else "No games found" }}
+      const nbaSlug = (abbr) => {
+        const map = { NYK:'ny', NOP:'no', SAS:'sa', GSW:'gs', UTA:'utah' };
+        return (map[abbr] || abbr || '').toLowerCase();
+      };
 
-    # ======================================================================
-    # NBA
-    # ======================================================================
-    - name: ESPN NBA Ticker
-      unique_id: espn_nba_ticker
-      icon: mdi:basketball
-      state: >
-        {% set ev = state_attr('sensor.espn_nba_scoreboard_raw','events') | default([]) %}
-        {{ ev | length }}
-      attributes:
-        ticker: >
-          {% set ev = state_attr('sensor.espn_nba_scoreboard_raw','events') | default([]) %}
-          {% set out = [] %}
-          {% for e in ev %}
-            {% set c = (e.competitions[0] if e.competitions is defined and e.competitions|length>0 else none) %}
-            {% if c %}
-              {% set comps = c.competitors | default([]) %}
-              {% set away = (comps | selectattr('homeAway','equalto','away') | list | first) %}
-              {% set home = (comps | selectattr('homeAway','equalto','home') | list | first) %}
-              {% set a = away.team.abbreviation if away and away.team is defined else 'AWY' %}
-              {% set h = home.team.abbreviation if home and home.team is defined else 'HME' %}
-              {% set as = away.score if away and away.score is defined else '-' %}
-              {% set hs = home.score if home and home.score is defined else '-' %}
-              {% set s = c.status.type.shortDetail if c.status is defined and c.status.type is defined else '' %}
-              {% set _ = out.append(a ~ " " ~ as ~ " - " ~ h ~ " " ~ hs ~ " • " ~ s) %}
-            {% endif %}
-          {% endfor %}
-          {{ out | join("   |   ") if out|length>0 else "No games found" }}
+      const mlbSlug = (abbr) => {
+        const map = { ARI:'ari', KCR:'kc', CHW:'cws', SFG:'sf', SDP:'sd', TBR:'tb' };
+        return (map[abbr] || abbr || '').toLowerCase();
+      };
 
-    # ======================================================================
-    # NHL
-    # ======================================================================
-    - name: ESPN NHL Ticker
-      unique_id: espn_nhl_ticker
-      icon: mdi:hockey-sticks
-      state: >
-        {% set ev = state_attr('sensor.espn_nhl_scoreboard_raw','events') | default([]) %}
-        {{ ev | length }}
-      attributes:
-        ticker: >
-          {% set ev = state_attr('sensor.espn_nhl_scoreboard_raw','events') | default([]) %}
-          {% set out = [] %}
-          {% for e in ev %}
-            {% set c = (e.competitions[0] if e.competitions is defined and e.competitions|length>0 else none) %}
-            {% if c %}
-              {% set comps = c.competitors | default([]) %}
-              {% set away = (comps | selectattr('homeAway','equalto','away') | list | first) %}
-              {% set home = (comps | selectattr('homeAway','equalto','home') | list | first) %}
-              {% set a = away.team.abbreviation if away and away.team is defined else 'AWY' %}
-              {% set h = home.team.abbreviation if home and home.team is defined else 'HME' %}
-              {% set as = away.score if away and away.score is defined else '-' %}
-              {% set hs = home.score if home and home.score is defined else '-' %}
-              {% set s = c.status.type.shortDetail if c.status is defined and c.status.type is defined else '' %}
-              {% set _ = out.append(a ~ " " ~ as ~ " - " ~ h ~ " " ~ hs ~ " • " ~ s) %}
-            {% endif %}
-          {% endfor %}
-          {{ out | join("   |   ") if out|length>0 else "No games found" }}
+      const simpleSlug = (abbr) => (abbr || '').toLowerCase();
 
-    # ======================================================================
-    # WNBA (optional)
-    # ======================================================================
-    - name: ESPN WNBA Ticker
-      unique_id: espn_wnba_ticker
-      icon: mdi:basketball
-      state: >
-        {% set ev = state_attr('sensor.espn_wnba_scoreboard_raw','events') | default([]) %}
-        {{ ev | length }}
-      attributes:
-        ticker: >
-          {% set ev = state_attr('sensor.espn_wnba_scoreboard_raw','events') | default([]) %}
-          {% set out = [] %}
-          {% for e in ev %}
-            {% set c = (e.competitions[0] if e.competitions is defined and e.competitions|length>0 else none) %}
-            {% if c %}
-              {% set comps = c.competitors | default([]) %}
-              {% set away = (comps | selectattr('homeAway','equalto','away') | list | first) %}
-              {% set home = (comps | selectattr('homeAway','equalto','home') | list | first) %}
-              {% set a = away.team.abbreviation if away and away.team is defined else 'AWY' %}
-              {% set h = home.team.abbreviation if home and home.team is defined else 'HME' %}
-              {% set as = away.score if away and away.score is defined else '-' %}
-              {% set hs = home.score if home and home.score is defined else '-' %}
-              {% set s = c.status.type.shortDetail if c.status is defined and c.status.type is defined else '' %}
-              {% set _ = out.append(a ~ " " ~ as ~ " - " ~ h ~ " " ~ hs ~ " • " ~ s) %}
-            {% endif %}
-          {% endfor %}
-          {{ out | join("   |   ") if out|length>0 else "No games found" }}
+      const slugFor = (abbr) => {
+        if (sport === 'NBA') return nbaSlug(abbr);
+        if (sport === 'MLB') return mlbSlug(abbr);
+        return simpleSlug(abbr);
+      };
+
+      const logoUrl = (teamObj, abbr) => {
+        const direct = teamObj?.logo || teamObj?.logos?.[0]?.href || teamObj?.logos?.[0]?.url;
+        if (direct) return direct;
+
+        const league = leagueFromSport(sport);
+        if (!league) return ''; // soccer/college: rely on feed logo
+        const slug = slugFor(abbr);
+        return slug ? `https://a.espncdn.com/i/teamlogos/${league}/500/${slug}.png` : '';
+      };
+
+      // ---- status chips ----
+      const parseMLBHalf = (shortDetail) => {
+        const s = (shortDetail || '').trim();
+        const m = s.match(/^(Top|Bot|Bottom|Mid|End)\s+(\d+)(?:st|nd|rd|th)?/i);
+        if (!m) return null;
+        let half = m[1].toLowerCase();
+        const inning = m[2];
+        if (half === 'bottom') half = 'bot';
+        const isTop = half === 'top';
+        return { label: isTop ? `▲ Top ${inning}` : `▼ Bot ${inning}` };
+      };
+
+      const chips = (stState, stShort, when) => {
+        if (stState === 'in') {
+          if (sport === 'MLB') {
+            const inn = parseMLBHalf(stShort);
+            return `<span class="pill live">LIVE</span><span class="pill meta">${inn ? inn.label : (stShort || 'In Progress')}</span>`;
+          }
+          return `<span class="pill live">LIVE</span><span class="pill meta">${stShort || 'In Progress'}</span>`;
+        }
+        if (stState === 'post') {
+          const txt = /final/i.test(stShort) ? stShort : 'FINAL';
+          return `<span class="pill final">${txt}</span>`;
+        }
+        return `<span class="pill upcoming">UPCOMING</span><span class="pill meta">${when}</span>`;
+      };
+
+      const num = (v) => {
+        const n = Number.parseFloat(v);
+        return Number.isFinite(n) ? n : null;
+      };
+
+      if (!ev.length) {
+        // Constant-ish speed even when empty
+        return `
+          <div class="bar" style="--dur:45s">
+            <div class="wrap">
+              <div class="marquee">
+                <div class="tile">
+                  <div class="top"><span class="pill upcoming">NO GAMES</span><span class="pill meta">${sport}</span></div>
+                  <div class="teams one"><div class="row"><span class="abbr">No ${sport} games today</span></div></div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      // Build tiles + a plain-text string for duration calculation
+      const tiles = [];
+      const speedTextParts = [];
+
+      ev.forEach(e => {
+        const comp = e?.competitions?.[0];
+        const teams = comp?.competitors || [];
+        const away = teams.find(t => t.homeAway === 'away');
+        const home = teams.find(t => t.homeAway === 'home');
+
+        const aAbbr = away?.team?.abbreviation ?? (away?.team?.shortDisplayName ?? 'AWY');
+        const hAbbr = home?.team?.abbreviation ?? (home?.team?.shortDisplayName ?? 'HOM');
+
+        const aScoreRaw = away?.score ?? '';
+        const hScoreRaw = home?.score ?? '';
+        const aScore = num(aScoreRaw);
+        const hScore = num(hScoreRaw);
+
+        const stState = e?.status?.type?.state ?? '';
+        const stShort = e?.status?.type?.shortDetail ?? '';
+        const when = new Date(e.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+        const aLogo = logoUrl(away?.team, aAbbr);
+        const hLogo = logoUrl(home?.team, hAbbr);
+
+        const showScores = (stState !== 'pre');
+
+        // winner dot
+        let awayWin = false, homeWin = false;
+        if (showScores && aScore != null && hScore != null && aScore !== hScore) {
+          awayWin = aScore > hScore;
+          homeWin = hScore > aScore;
+        }
+
+        // for speed calc (plain text)
+        speedTextParts.push(`${aAbbr} ${aScoreRaw} ${hAbbr} ${hScoreRaw} ${stShort}`);
+
+        tiles.push(`
+          <div class="tile">
+            <div class="top">${chips(stState, stShort, when)}</div>
+            <div class="teams">
+              <div class="row">
+                <span class="wdot ${awayWin ? 'on' : ''}"></span>
+                <img class="tlogo" src="${aLogo}" alt="${aAbbr}" onerror="this.style.display='none'">
+                <span class="abbr">${aAbbr}</span>
+                <span class="score">${showScores ? aScoreRaw : ''}</span>
+              </div>
+              <div class="row">
+                <span class="wdot ${homeWin ? 'on' : ''}"></span>
+                <img class="tlogo" src="${hLogo}" alt="${hAbbr}" onerror="this.style.display='none'">
+                <span class="abbr">${hAbbr}</span>
+                <span class="score">${showScores ? hScoreRaw : ''}</span>
+              </div>
+            </div>
+          </div>
+        `);
+      });
+
+      // ✅ Constant perceived speed: duration scales with content length
+      const textForSpeed = speedTextParts.join(' • ');
+      // tweak divisor to taste: smaller = slower, larger = faster
+      const seconds = Math.round(textForSpeed.length / 12);
+      const dur = Math.max(22, Math.min(90, seconds)) + 's';
+
+      return `
+        <div class="bar" style="--dur:${dur}">
+          <div class="wrap">
+            <div class="marquee">${tiles.join(`<div class="sep"></div>`)}</div>
+          </div>
+        </div>`;
+    ]]]
+card_mod:
+  style: |
+    .bar{
+      min-height: 60px;
+      background: rgba(245,245,245,0.98);
+      display:flex;
+      align-items:center;
+    }
+    .wrap{
+      overflow:hidden;
+      width:100%;
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%);
+              mask-image: linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%);
+    }
+
+    /* ✅ duration is now variable via --dur */
+    .marquee{
+      display:inline-flex;
+      align-items:center;
+      white-space:nowrap;
+      padding-left:100%;
+      animation: espn-marquee var(--dur, 34s) linear infinite;
+      will-change: transform;
+    }
+    ha-card:hover .marquee{ animation-play-state: paused; }
+
+    @keyframes espn-marquee{
+      0%{ transform: translateX(0%); }
+      100%{ transform: translateX(-100%); }
+    }
+
+    .tile{
+      min-width:190px;
+      padding:6px 10px;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .sep{
+      height:44px;
+      border-right:1px solid rgba(0,0,0,0.10);
+      margin:0 2px;
+    }
+    .top{ display:flex; gap:6px; align-items:center; }
+
+    .pill{
+      font-size:10px;
+      font-weight:900;
+      padding:2px 7px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.12);
+      color: rgba(0,0,0,0.78);
+      background: rgba(255,255,255,0.92);
+      letter-spacing:.4px;
+    }
+    .pill.live{
+      background: rgba(208,0,0,0.92);
+      border-color: rgba(208,0,0,0.92);
+      color:#fff;
+    }
+    .pill.meta{ color: rgba(0,0,0,0.58); }
+
+    .teams{ display:flex; flex-direction:column; gap:3px; }
+    .row{ display:flex; align-items:center; gap:8px; line-height:1.05; }
+
+    .wdot{
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background: rgba(0,0,0,0.10);
+      border: 1px solid rgba(0,0,0,0.12);
+    }
+    .wdot.on{
+      background:#2ecc71;
+      border-color: rgba(46,204,113,0.65);
+      box-shadow: 0 0 10px rgba(46,204,113,0.35);
+    }
+
+    .tlogo{
+      width:18px;
+      height:18px;
+      object-fit:contain;
+      border-radius:4px;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.18));
+    }
+    .abbr{
+      font-size:12px;
+      font-weight:900;
+      color: rgba(0,0,0,0.82);
+      min-width:36px;
+      letter-spacing:.3px;
+    }
+    .score{
+      margin-left:auto;
+      font-size:12px;
+      font-weight:1000;
+      color: rgba(0,0,0,0.82);
+    }

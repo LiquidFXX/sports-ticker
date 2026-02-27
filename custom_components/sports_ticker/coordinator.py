@@ -4,25 +4,61 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import aiohttp
-
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, CONF_LEAGUES, CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL, LEAGUES
+from .const import (
+    DOMAIN,
+    CONF_LEAGUES,
+    CONF_POLL_INTERVAL,
+    DEFAULT_POLL_INTERVAL,
+    LEAGUES,
+)
 
 LOGGER = logging.getLogger(__name__)
-TIMEOUT = aiohttp.ClientTimeout(total=30)
+
+
+def _parse_dt(dt_str: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def _pick_next_event(events: list[dict[str, Any]]) -> dict[str, Any] | None:
+    now = datetime.now(timezone.utc)
+    dated: list[tuple[datetime, dict[str, Any]]] = []
+
+    for ev in events or []:
+        dt = _parse_dt(ev.get("date", ""))
+        if dt:
+            dated.append((dt, ev))
+
+    if not dated:
+        return events[0] if events else None
+
+    dated.sort(key=lambda x: x[0])
+
+    for dt, ev in dated:
+        if dt >= now:
+            return ev
+
+    return dated[0][1]
 
 
 class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def __init__(self, hass: HomeAssistant, entry) -> None:
         self.hass = hass
         self.entry = entry
-        self.session = aiohttp.ClientSession(timeout=TIMEOUT)
-        self._last_fetch: dict[str, datetime] = {}
+        self.session = async_get_clientsession(hass)
 
-        poll = int(entry.options.get(CONF_POLL_INTERVAL, entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)))
+        poll = int(
+            entry.options.get(
+                CONF_POLL_INTERVAL,
+                entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
+            )
+        )
 
         super().__init__(
             hass=hass,
@@ -31,9 +67,9 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(seconds=poll),
         )
 
-    async def _fetch_json(self, url: str) -> dict[str, Any]:
+    async def _fetch(self, url: str) -> dict[str, Any]:
         try:
-            async with self.session.get(url) as resp:
+            async with self.session.get(url, timeout=20) as resp:
                 if resp.status != 200:
                     raise UpdateFailed(f"ESPN HTTP {resp.status} for {url}")
                 return await resp.json()
@@ -41,42 +77,42 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise UpdateFailed(str(err)) from err
 
     async def _async_update_data(self) -> dict[str, Any]:
-        leagues = self.entry.options.get(CONF_LEAGUES, self.entry.data.get(CONF_LEAGUES, ["mlb", "nfl"]))
-        if not isinstance(leagues, list):
-            leagues = [leagues]
-        leagues = [str(x).strip().lower() for x in leagues]
+        leagues = self.entry.options.get(
+            CONF_LEAGUES,
+            self.entry.data.get(CONF_LEAGUES, ["mlb", "nfl"]),
+        )
 
-        now = datetime.now(timezone.utc)
-        out: dict[str, Any] = {}
+        if isinstance(leagues, str):
+            leagues = [leagues]
+        leagues = [str(x).strip().lower() for x in (leagues or [])]
+
+        result: dict[str, Any] = {}
+        fetched_at = datetime.now(timezone.utc).isoformat()
 
         for key in leagues:
-            meta = LEAGUES.get(key)
-            if not meta:
-                out[key] = {"error": "unknown_league", "fetched_at": now.isoformat()}
-                continue
-
-            min_interval = int(meta.get("min_interval", 60))  # type: ignore[arg-type]
-            last = self._last_fetch.get(key)
-            if last and (now - last).total_seconds() < min_interval:
-                # Keep previous data if within minimum refresh window
-                out[key] = self.data.get(key, {})
+            url = LEAGUES.get(key)
+            if not url:
+                result[key] = {"error": "unknown_league", "fetched_at": fetched_at}
                 continue
 
             try:
-                raw = await self._fetch_json(str(meta["url"]))  # type: ignore[index]
-                self._last_fetch[key] = now
+                raw = await self._fetch(url)
+                events = raw.get("events") or []
+                nxt = _pick_next_event(events)
 
-                out[key] = {
-                    "fetched_at": now.isoformat(),
-                    "events": raw.get("events") or [],
+                result[key] = {
+                    "fetched_at": fetched_at,
+                    "events": events,
                     "leagues": raw.get("leagues"),
                     "day": raw.get("day"),
                     "season": raw.get("season"),
+                    "next": nxt,
                 }
             except Exception as e:
-                out[key] = {"error": str(e), "fetched_at": now.isoformat()}
+                result[key] = {"error": str(e), "fetched_at": fetched_at}
 
-        return out
+        return result
 
     async def async_shutdown(self) -> None:
-        await self.session.close()
+        """No-op: we use HA's shared session (don't close it)."""
+        return

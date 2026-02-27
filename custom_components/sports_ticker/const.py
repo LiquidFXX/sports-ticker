@@ -1,154 +1,28 @@
 from __future__ import annotations
 
-import voluptuous as vol
+DOMAIN = "sports_ticker"
+PLATFORMS = ["sensor"]
 
-from homeassistant import config_entries
-from homeassistant.helpers import selector
+CONF_LEAGUES = "leagues"
+CONF_POLL_INTERVAL = "poll_interval"
 
-from .const import (
-    DOMAIN,
-    CONF_LEAGUES,
-    CONF_POLL_INTERVAL,
-    DEFAULT_POLL_INTERVAL,
-    LEAGUES,
-    CONF_TICKER_SPEED,
-    DEFAULT_TICKER_SPEED,
-    CONF_TICKER_THEME,
-    DEFAULT_TICKER_THEME,
-    TICKER_THEME_LIGHT,
-    TICKER_THEME_DARK,
-)
+# Card helper options (stored in entry options and exposed on sensor attributes)
+CONF_TICKER_SPEED = "ticker_speed"
+DEFAULT_TICKER_SPEED = 12  # matches your old length/12 divisor
 
-DEFAULT_LEAGUES = ["mlb", "nfl"]
+CONF_TICKER_THEME = "ticker_theme"
+TICKER_THEME_LIGHT = "light"
+TICKER_THEME_DARK = "dark"
+DEFAULT_TICKER_THEME = TICKER_THEME_LIGHT
 
+DEFAULT_POLL_INTERVAL = 60  # seconds
 
-def _normalize_leagues(value) -> list[str]:
-    """Normalize into list[str] of known league keys."""
-    if value is None:
-        return []
-    if isinstance(value, dict):
-        # support {"mlb": True, "nfl": True} style too
-        value = [k for k, v in value.items() if v]
-    if isinstance(value, str):
-        value = [value]
-    if not isinstance(value, list):
-        value = list(value)
-
-    out: list[str] = []
-    for v in value:
-        k = str(v).strip().lower()
-        if k in LEAGUES and k not in out:
-            out.append(k)
-    return out
-
-
-def _normalize_theme(value: str | None) -> str:
-    t = str(value or DEFAULT_TICKER_THEME).strip().lower()
-    return t if t in (TICKER_THEME_LIGHT, TICKER_THEME_DARK) else DEFAULT_TICKER_THEME
-
-
-class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 1
-
-    async def async_step_user(self, user_input=None):
-        if user_input is not None:
-            leagues = _normalize_leagues(user_input.get(CONF_LEAGUES, DEFAULT_LEAGUES))
-            poll = int(user_input.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL))
-            speed = int(user_input.get(CONF_TICKER_SPEED, DEFAULT_TICKER_SPEED))
-            theme = _normalize_theme(user_input.get(CONF_TICKER_THEME, DEFAULT_TICKER_THEME))
-
-            return self.async_create_entry(
-                title="Sports Ticker",
-                data={
-                    CONF_LEAGUES: leagues,
-                    CONF_POLL_INTERVAL: poll,
-                    CONF_TICKER_SPEED: speed,
-                    CONF_TICKER_THEME: theme,
-                },
-            )
-
-        data_schema = vol.Schema(
-            {
-                vol.Required(CONF_LEAGUES, default=DEFAULT_LEAGUES): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=sorted(list(LEAGUES.keys())),
-                        multiple=True,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): vol.All(
-                    vol.Coerce(int), vol.Range(min=15, max=600)
-                ),
-                vol.Optional(CONF_TICKER_SPEED, default=DEFAULT_TICKER_SPEED): vol.All(
-                    vol.Coerce(int), vol.Range(min=6, max=30)  # 6 slow, 30 fast
-                ),
-                vol.Optional(CONF_TICKER_THEME, default=DEFAULT_TICKER_THEME): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[TICKER_THEME_LIGHT, TICKER_THEME_DARK],
-                        multiple=False,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }
-        )
-
-        return self.async_show_form(step_id="user", data_schema=data_schema)
-
-    @staticmethod
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry):
-        return SportsTickerOptionsFlow(config_entry)
-
-
-class SportsTickerOptionsFlow(config_entries.OptionsFlow):
-    def __init__(self, entry: config_entries.ConfigEntry) -> None:
-        self._entry = entry
-
-    async def async_step_init(self, user_input=None):
-        if user_input is not None:
-            leagues = _normalize_leagues(user_input.get(CONF_LEAGUES, DEFAULT_LEAGUES))
-            poll = int(user_input.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL))
-            speed = int(user_input.get(CONF_TICKER_SPEED, DEFAULT_TICKER_SPEED))
-            theme = _normalize_theme(user_input.get(CONF_TICKER_THEME, DEFAULT_TICKER_THEME))
-
-            return self.async_create_entry(
-                title="",
-                data={
-                    CONF_LEAGUES: leagues,
-                    CONF_POLL_INTERVAL: poll,
-                    CONF_TICKER_SPEED: speed,
-                    CONF_TICKER_THEME: theme,
-                },
-            )
-
-        current = {**self._entry.data, **self._entry.options}
-        current_leagues = _normalize_leagues(current.get(CONF_LEAGUES, DEFAULT_LEAGUES))
-        current_poll = int(current.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL))
-        current_speed = int(current.get(CONF_TICKER_SPEED, DEFAULT_TICKER_SPEED))
-        current_theme = _normalize_theme(current.get(CONF_TICKER_THEME, DEFAULT_TICKER_THEME))
-
-        data_schema = vol.Schema(
-            {
-                vol.Required(CONF_LEAGUES, default=current_leagues): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=sorted(list(LEAGUES.keys())),
-                        multiple=True,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(CONF_POLL_INTERVAL, default=current_poll): vol.All(
-                    vol.Coerce(int), vol.Range(min=15, max=600)
-                ),
-                vol.Optional(CONF_TICKER_SPEED, default=current_speed): vol.All(
-                    vol.Coerce(int), vol.Range(min=6, max=30)
-                ),
-                vol.Optional(CONF_TICKER_THEME, default=current_theme): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[TICKER_THEME_LIGHT, TICKER_THEME_DARK],
-                        multiple=False,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }
-        )
-
-        return self.async_show_form(step_id="init", data_schema=data_schema)
+# Supported ESPN endpoints (meta dict so we can show friendly names)
+LEAGUES: dict[str, dict[str, object]] = {
+    "mlb":  {"name": "MLB",  "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard", "min_interval": 60},
+    "nfl":  {"name": "NFL",  "url": "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard", "min_interval": 60},
+    "nba":  {"name": "NBA",  "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard", "min_interval": 60},
+    "nhl":  {"name": "NHL",  "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard", "min_interval": 60},
+    "wnba": {"name": "WNBA", "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/scoreboard", "min_interval": 60},
+    "cfb":  {"name": "CFB",  "url": "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard", "min_interval": 60},
+}

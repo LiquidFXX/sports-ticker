@@ -1,11 +1,13 @@
 type: custom:button-card
 show_name: false
 show_state: false
-
-# ✅ ONLY change these two to switch sports
 variables:
   sport: MLB
   sensor: sensor.espn_mlb_scoreboard_raw
+
+  # Optional: override speed/theme in the card
+  # speed_divisor: 12
+  # theme: light   # or dark
 
 styles:
   card:
@@ -28,11 +30,11 @@ custom_fields:
       const raw = states[sensorId];
       const ev = raw?.attributes?.events || [];
 
-      // ✅ Theme + speed come from integration options exposed as sensor attributes
-      const theme = String(raw?.attributes?.ticker_theme ?? 'light').toLowerCase();
-      const div = Number(raw?.attributes?.ticker_speed ?? 12);
-      const safeDiv = Number.isFinite(div) ? Math.max(6, Math.min(30, div)) : 12;
+      // Use integration options by default (if present), allow override
+      const speedDiv = Number(variables.speed_divisor ?? raw?.attributes?.ticker_speed ?? 12);
+      const theme = (variables.theme ?? raw?.attributes?.ticker_theme ?? 'light').toLowerCase();
 
+      // ---- logo helpers ----
       const leagueFromSport = (s) => {
         const map = { NBA:'nba', WNBA:'wnba', MLB:'mlb', NFL:'nfl', NHL:'nhl' };
         return map[s] || null;
@@ -66,6 +68,7 @@ custom_fields:
         return slug ? `https://a.espncdn.com/i/teamlogos/${league}/500/${slug}.png` : '';
       };
 
+      // ---- status chips ----
       const parseMLBHalf = (shortDetail) => {
         const s = (shortDetail || '').trim();
         const m = s.match(/^(Top|Bot|Bottom|Mid|End)\s+(\d+)(?:st|nd|rd|th)?/i);
@@ -97,19 +100,35 @@ custom_fields:
         return Number.isFinite(n) ? n : null;
       };
 
+      // Theme tokens
+      const tokens = theme === 'dark'
+        ? {
+            barBg: 'rgba(20,20,20,0.95)',
+            text: 'rgba(255,255,255,0.85)',
+            meta: 'rgba(255,255,255,0.55)',
+            border: 'rgba(255,255,255,0.10)',
+            tileSep: 'rgba(255,255,255,0.10)',
+            pillBg: 'rgba(30,30,30,0.92)',
+            pillBorder: 'rgba(255,255,255,0.12)',
+          }
+        : {
+            barBg: 'rgba(245,245,245,0.98)',
+            text: 'rgba(0,0,0,0.82)',
+            meta: 'rgba(0,0,0,0.58)',
+            border: 'rgba(0,0,0,0.10)',
+            tileSep: 'rgba(0,0,0,0.10)',
+            pillBg: 'rgba(255,255,255,0.92)',
+            pillBorder: 'rgba(0,0,0,0.12)',
+          };
+
       if (!ev.length) {
         return `
-          <div class="bar ${theme}" style="--dur:45s">
+          <div class="bar" style="--dur:45s; --barBg:${tokens.barBg}; --text:${tokens.text}; --meta:${tokens.meta}; --border:${tokens.border}; --tileSep:${tokens.tileSep}; --pillBg:${tokens.pillBg}; --pillBorder:${tokens.pillBorder};">
             <div class="wrap">
               <div class="marquee">
                 <div class="tile">
-                  <div class="top">
-                    <span class="pill upcoming">NO GAMES</span>
-                    <span class="pill meta">${sport}</span>
-                  </div>
-                  <div class="teams one">
-                    <div class="row"><span class="abbr">No ${sport} games today</span></div>
-                  </div>
+                  <div class="top"><span class="pill upcoming">NO GAMES</span><span class="pill meta">${sport}</span></div>
+                  <div class="teams one"><div class="row"><span class="abbr">No ${sport} games today</span></div></div>
                 </div>
               </div>
             </div>
@@ -130,7 +149,6 @@ custom_fields:
 
         const aScoreRaw = away?.score ?? '';
         const hScoreRaw = home?.score ?? '';
-
         const aScore = num(aScoreRaw);
         const hScore = num(hScoreRaw);
 
@@ -173,11 +191,11 @@ custom_fields:
       });
 
       const textForSpeed = speedTextParts.join(' • ');
-      const seconds = Math.round(textForSpeed.length / safeDiv);
+      const seconds = Math.round(textForSpeed.length / Math.max(6, speedDiv));
       const dur = Math.max(22, Math.min(90, seconds)) + 's';
 
       return `
-        <div class="bar ${theme}" style="--dur:${dur}">
+        <div class="bar" style="--dur:${dur}; --barBg:${tokens.barBg}; --text:${tokens.text}; --meta:${tokens.meta}; --border:${tokens.border}; --tileSep:${tokens.tileSep}; --pillBg:${tokens.pillBg}; --pillBorder:${tokens.pillBorder};">
           <div class="wrap">
             <div class="marquee">${tiles.join(`<div class="sep"></div>`)}</div>
           </div>
@@ -188,41 +206,16 @@ card_mod:
   style: |
     .bar{
       min-height: 60px;
+      background: var(--barBg);
       display:flex;
       align-items:center;
     }
-
-    .bar.light{
-      background: rgba(245,245,245,0.98);
-      --pill-bg: rgba(255,255,255,0.92);
-      --pill-border: rgba(0,0,0,0.12);
-      --pill-text: rgba(0,0,0,0.78);
-      --meta-text: rgba(0,0,0,0.58);
-      --row-text: rgba(0,0,0,0.82);
-      --sep: rgba(0,0,0,0.10);
-      --wdot: rgba(0,0,0,0.10);
-      --wdot-border: rgba(0,0,0,0.12);
-    }
-
-    .bar.dark{
-      background: rgba(20,20,20,0.92);
-      --pill-bg: rgba(0,0,0,0.35);
-      --pill-border: rgba(255,255,255,0.14);
-      --pill-text: rgba(255,255,255,0.88);
-      --meta-text: rgba(255,255,255,0.60);
-      --row-text: rgba(255,255,255,0.90);
-      --sep: rgba(255,255,255,0.10);
-      --wdot: rgba(255,255,255,0.14);
-      --wdot-border: rgba(255,255,255,0.14);
-    }
-
     .wrap{
       overflow:hidden;
       width:100%;
       -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%);
               mask-image: linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%);
     }
-
     .marquee{
       display:inline-flex;
       align-items:center;
@@ -247,7 +240,7 @@ card_mod:
     }
     .sep{
       height:44px;
-      border-right:1px solid var(--sep);
+      border-right:1px solid var(--tileSep);
       margin:0 2px;
     }
     .top{ display:flex; gap:6px; align-items:center; }
@@ -257,9 +250,9 @@ card_mod:
       font-weight:900;
       padding:2px 7px;
       border-radius:999px;
-      border:1px solid var(--pill-border);
-      color: var(--pill-text);
-      background: var(--pill-bg);
+      border:1px solid var(--pillBorder);
+      color: var(--text);
+      background: var(--pillBg);
       letter-spacing:.4px;
     }
     .pill.live{
@@ -267,13 +260,7 @@ card_mod:
       border-color: rgba(208,0,0,0.92);
       color:#fff;
     }
-    .pill.final{
-      background: rgba(0,0,0,0.08);
-    }
-    .bar.dark .pill.final{
-      background: rgba(255,255,255,0.10);
-    }
-    .pill.meta{ color: var(--meta-text); }
+    .pill.meta{ color: var(--meta); }
 
     .teams{ display:flex; flex-direction:column; gap:3px; }
     .row{ display:flex; align-items:center; gap:8px; line-height:1.05; }
@@ -282,8 +269,8 @@ card_mod:
       width:8px;
       height:8px;
       border-radius:50%;
-      background: var(--wdot);
-      border: 1px solid var(--wdot-border);
+      background: rgba(0,0,0,0.10);
+      border: 1px solid var(--pillBorder);
     }
     .wdot.on{
       background:#2ecc71;
@@ -301,7 +288,7 @@ card_mod:
     .abbr{
       font-size:12px;
       font-weight:900;
-      color: var(--row-text);
+      color: var(--text);
       min-width:36px;
       letter-spacing:.3px;
     }
@@ -309,5 +296,5 @@ card_mod:
       margin-left:auto;
       font-size:12px;
       font-weight:1000;
-      color: var(--row-text);
+      color: var(--text);
     }

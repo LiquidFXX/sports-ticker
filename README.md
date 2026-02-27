@@ -1,3 +1,5 @@
+Donate for the effort https://www.paypal.com/donate/?hosted_button_id=ENF4445N5K5VL
+
 # Sports Ticker (ESPN Scoreboard Raw)
 
 A lightweight Home Assistant custom integration that creates **ESPN Scoreboard Raw** sensors (with `events`, `leagues`, `day`, `season`) for use in dashboards — especially ticker-style Lovelace cards.

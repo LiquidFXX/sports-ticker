@@ -1,4 +1,4 @@
-# NBA Cards (ESPN Scoreboard Raw) — `card.md`
+# NBA Cards (ESPN Scoreboard Raw)
 
 This doc contains copy/paste **Home Assistant Lovelace** examples for NBA using your ESPN-style sensor:
 

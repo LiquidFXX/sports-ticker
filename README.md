@@ -142,7 +142,8 @@ Depending on your version, you may also see things like:
 ## 🧩 Lovelace examples
 
 ### 1) ESPN-style Ticker card (button-card)
-![mlbticker](https://github.com/user-attachments/assets/a2450782-197d-4783-b777-bc5007df095f)
+![mlbticker](https://github.com/user-attachments/assets/5f63fdf8-9eaf-4400-a3b2-fd7f04b7ea17)
+
 
 <details>
   

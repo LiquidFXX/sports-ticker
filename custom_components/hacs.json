@@ -1,4 +1,11 @@
 {
+  "domain": "sports_ticker",
   "name": "Sports Ticker",
-  "render_readme": true
+  "version": "0.0.12",
+  "config_flow": true,
+  "documentation": "https://github.com/liquidfxx/sports-ticker",
+  "issue_tracker": "https://github.com/liquidfxx/sports-ticker/issues",
+  "codeowners": ["@liquidfxx"],
+  "iot_class": "cloud_polling",
+  "requirements": []
 }

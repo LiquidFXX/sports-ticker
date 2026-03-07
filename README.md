@@ -599,7 +599,7 @@ custom_fields:
       return `
         <div class="wrap">
           <div class="hdr">
-            <div class="title">WHAT’S ON TONIGHT</div>
+            <div class="title">WHAT’S ON TONIGHT</div> ####CHANGE NAME####
             <div class="sub">MLB • ${events.length} games</div>
           </div>
           <div class="body">

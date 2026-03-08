@@ -2,16 +2,22 @@ from __future__ import annotations
 
 import logging
 
+import homeassistant.helpers.config_validation as cv
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import SportsTickerCoordinator
 
 LOGGER = logging.getLogger(__name__)
 
+# ✅ hassfest: integration has async_setup, so define CONFIG_SCHEMA
+# This integration is config-entry only (no YAML configuration)
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the integration (YAML not used)."""
     hass.data.setdefault(DOMAIN, {})
     return True

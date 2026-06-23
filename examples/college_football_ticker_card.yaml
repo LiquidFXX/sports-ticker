@@ -29,17 +29,13 @@ custom_fields:
       const events = st?.attributes?.events || [];
       const fav = String(st?.attributes?.favorite_team || '').toUpperCase();
 
-      // The integration setting controls the visible pace directly.
-      // It is treated as seconds per game tile, so the same setting
-      // produces a consistent scroll speed regardless of game count.
+      // Use the integration's configured ticker speed directly.
+      // No scaling based on the number of games.
       const configuredSpeed = Number(st?.attributes?.ticker_speed);
-      const secondsPerGame =
+      const scrollDuration =
         Number.isFinite(configuredSpeed) && configuredSpeed > 0
           ? configuredSpeed
           : 12;
-
-      const gameCount = Math.max(1, events.length);
-      const scrollDuration = Math.round(secondsPerGame * gameCount);
 
       const getComp = e => e?.competitions?.[0] || {};
       const getStatusType = e => getComp(e)?.status?.type || e?.status?.type || {};

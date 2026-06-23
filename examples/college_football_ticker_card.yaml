@@ -29,23 +29,17 @@ custom_fields:
       const events = st?.attributes?.events || [];
       const fav = String(st?.attributes?.favorite_team || '').toUpperCase();
 
-      // ticker_speed is the base duration from the integration.
-      // Lower values are faster; higher values are slower.
+      // The integration setting controls the visible pace directly.
+      // It is treated as seconds per game tile, so the same setting
+      // produces a consistent scroll speed regardless of game count.
       const configuredSpeed = Number(st?.attributes?.ticker_speed);
-      const baseDuration =
+      const secondsPerGame =
         Number.isFinite(configuredSpeed) && configuredSpeed > 0
           ? configuredSpeed
-          : 40;
+          : 12;
 
-      // Scale total animation time to the amount of content so a large
-      // college-football slate moves at roughly the same visual speed as MLB.
-      const gameCount = events.length;
-      const scrollDuration = Math.round(
-        Math.max(
-          50,
-          baseDuration + Math.max(0, gameCount - 1) * 8
-        )
-      );
+      const gameCount = Math.max(1, events.length);
+      const scrollDuration = Math.round(secondsPerGame * gameCount);
 
       const getComp = e => e?.competitions?.[0] || {};
       const getStatusType = e => getComp(e)?.status?.type || e?.status?.type || {};
@@ -207,7 +201,7 @@ card_mod:
       align-items: center;
       white-space: nowrap;
       padding-left: 100%;
-      animation: cfb-marquee var(--ticker-duration, 50s) linear infinite;
+      animation: cfb-marquee var(--ticker-duration, 12s) linear infinite;
       will-change: transform;
     }
 

@@ -29,13 +29,14 @@ custom_fields:
       const events = st?.attributes?.events || [];
       const fav = String(st?.attributes?.favorite_team || '').toUpperCase();
 
-      // Use the integration's configured ticker speed directly.
-      // No scaling based on the number of games.
+      // Use the integration's configured ticker speed as the only control.
+      // College Football uses a fixed 3x duration because its ticker track
+      // is much longer than MLB. This does not depend on the number of games.
       const configuredSpeed = Number(st?.attributes?.ticker_speed);
       const scrollDuration =
         Number.isFinite(configuredSpeed) && configuredSpeed > 0
-          ? configuredSpeed
-          : 12;
+          ? configuredSpeed * 3
+          : 36;
 
       const getComp = e => e?.competitions?.[0] || {};
       const getStatusType = e => getComp(e)?.status?.type || e?.status?.type || {};
@@ -197,7 +198,7 @@ card_mod:
       align-items: center;
       white-space: nowrap;
       padding-left: 100%;
-      animation: cfb-marquee var(--ticker-duration, 12s) linear infinite;
+      animation: cfb-marquee var(--ticker-duration, 36s) linear infinite;
       will-change: transform;
     }
 

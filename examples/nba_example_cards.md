@@ -292,10 +292,11 @@ variables:
 styles:
   card:
     - border-radius: 18px
-    - padding: 14px 16px
+    - padding: clamp(10px, 1.2vw, 16px) clamp(12px, 1.4vw, 18px)
     - background: rgba(255,255,255,0.96)
     - border: 1px solid rgba(0,0,0,0.08)
     - overflow: hidden
+
   custom_fields:
     main:
       - width: 100%
@@ -389,43 +390,124 @@ custom_fields:
 
 card_mod:
   style: |
-    ha-card { position: relative; }
+    ha-card { 
+      position: relative;
+      font-size: clamp(11px, 1.1vw, 15px);
+    }
+
     ha-card:before{
       content:"";
       position:absolute;
       top:0; left:0; right:0;
-      height:4px;
+      height: clamp(3px, 0.4vw, 5px);
       background: rgba(255,0,0,0.85);
     }
 
-    .strip{ display:flex; align-items:center; justify-content:space-between; gap:14px; color:#111; }
-    .team{ flex: 1 1 36%; display:flex; align-items:center; gap:12px; min-width:0; }
-    .team.left{ justify-content:flex-start; }
+    .strip{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: clamp(10px, 1.2vw, 16px);
+      color:#111;
+    }
+
+    .team{
+      flex: 1 1 36%;
+      display:flex;
+      align-items:center;
+      gap: clamp(8px, 1vw, 14px);
+      min-width:0;
+    }
+
     .team.right{ justify-content:flex-end; }
 
-    .logo{ width:56px; height:56px; display:flex; align-items:center; justify-content:center; border-radius:14px; background: rgba(0,0,0,0.02); }
-    .logo img{ width:52px; height:52px; object-fit:contain; }
+    .logo{
+      width: clamp(42px, 4vw, 64px);
+      height: clamp(42px, 4vw, 64px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius: 14px;
+      background: rgba(0,0,0,0.02);
+    }
 
-    .meta{ min-width:0; display:flex; flex-direction:column; gap:2px; }
-    .name{ font-size:18px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .rec{ font-size:12px; opacity:.55; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .logo img{
+      width: 90%;
+      height: 90%;
+      object-fit: contain;
+    }
 
-    .score{ font-size:42px; font-weight:900; line-height:1; min-width:48px; text-align:center; }
+    .meta{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap: 2px;
+    }
 
-    .center{ flex:0 0 32%; display:flex; flex-direction:column; align-items:center; gap:8px; min-width:240px; }
-    .header{ font-size:16px; font-weight:700; opacity:.85; }
+    .name{
+      font-size: clamp(14px, 1.4vw, 20px);
+      font-weight:700;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
 
-    .linescore{ width:100%; display:flex; flex-direction:column; gap:4px; opacity:.88; }
-    .row{ display:grid; grid-template-columns: 44px repeat(4, 22px) 22px; gap:6px; align-items:center; justify-content:center; }
-    .row.head{ opacity:.55; font-size:12px; font-weight:700; }
-    .abbr{ text-align:left; font-size:12px; font-weight:800; opacity:.85; }
-    .q, .qt, .qv, .qtv{ text-align:center; font-size:12px; font-weight:700; }
+    .rec{
+      font-size: clamp(10px, 0.9vw, 13px);
+      opacity:.55;
+    }
 
-    @media (max-width: 520px){
-      .logo{ display:none; }
-      .center{ min-width:200px; }
-      .score{ font-size:34px; }
-      .name{ font-size:15px; }
+    .score{
+      font-size: clamp(28px, 3vw, 48px);
+      font-weight:900;
+      line-height:1;
+      min-width: clamp(36px, 4vw, 56px);
+      text-align:center;
+    }
+
+    .center{
+      flex:0 0 clamp(200px, 30%, 340px);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: clamp(6px, 0.8vw, 10px);
+    }
+
+    .header{
+      font-size: clamp(12px, 1.1vw, 17px);
+      font-weight:700;
+      opacity:.85;
+    }
+
+    .linescore{
+      width:100%;
+      display:flex;
+      flex-direction:column;
+      gap: 4px;
+      opacity:.88;
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: clamp(34px, 4vw, 50px) repeat(4, 1fr) 1fr;
+      gap: clamp(4px, 0.5vw, 8px);
+      align-items:center;
+    }
+
+    .row.head{
+      opacity:.55;
+      font-size: clamp(9px, 0.8vw, 12px);
+    }
+
+    .abbr{
+      font-size: clamp(10px, 0.9vw, 13px);
+      font-weight:800;
+    }
+
+    .q, .qt, .qv, .qtv{
+      text-align:center;
+      font-size: clamp(10px, 0.9vw, 13px);
+      font-weight:700;
     }
   ```
 </details>
@@ -461,13 +543,14 @@ styles:
     - overflow: hidden
     - background: rgba(255,255,255,0.98)
     - border: 1px solid rgba(0,0,0,0.08)
+
   custom_fields:
     main:
       - width: 100%
 
 custom_fields:
   main: >
-    [[[
+    [[[ 
       const fav = variables.fav;
       const ent = variables.src;
       const stObj = states[ent];
@@ -476,152 +559,384 @@ custom_fields:
       const events = stObj.attributes?.events || [];
       if (!events.length) return `${fav}: no games found`;
 
-      const ev = events.find(e => (e.competitions?.[0]?.competitors || []).some(x => x.team?.abbreviation === fav));
+      const ev = events.find(e =>
+        (e.competitions?.[0]?.competitors || [])
+        .some(x => x.team?.abbreviation === fav)
+      );
+
       if (!ev) return `${fav}: no game found`;
 
       const c = ev.competitions?.[0];
       const comps = c?.competitors || [];
+
       const home = comps.find(x => x.homeAway === 'home');
       const away = comps.find(x => x.homeAway === 'away');
 
       const hAbbr = home?.team?.abbreviation ?? 'HOME';
       const aAbbr = away?.team?.abbreviation ?? 'AWAY';
+
       const hLogo = home?.team?.logo ?? '';
       const aLogo = away?.team?.logo ?? '';
 
       const hScore = home?.score ?? '';
       const aScore = away?.score ?? '';
 
-      const status = c?.status?.type?.shortDetail || c?.status?.type?.detail || '';
+      const status =
+        c?.status?.type?.shortDetail ||
+        c?.status?.type?.detail ||
+        '';
 
       const lp = c?.situation?.lastPlay;
+
       const playType = lp?.type?.text || 'Possession';
       const playText = lp?.text || '—';
 
       const p = lp?.probability || {};
-      const hWin = (typeof p.homeWinPercentage === 'number') ? (p.homeWinPercentage * 100) : null;
-      const aWin = (typeof p.awayWinPercentage === 'number') ? (p.awayWinPercentage * 100) : null;
+
+      const hWin =
+        typeof p.homeWinPercentage === 'number'
+        ? p.homeWinPercentage * 100
+        : null;
+
+      const aWin =
+        typeof p.awayWinPercentage === 'number'
+        ? p.awayWinPercentage * 100
+        : null;
 
       let favWin = null;
+
       if (fav === hAbbr) favWin = hWin;
       if (fav === aAbbr) favWin = aWin;
 
-      const winStr = (favWin != null) ? `Win %: ${fav}, ${favWin.toFixed(1)}%` : '';
+      const winStr =
+        favWin != null
+        ? `Win %: ${fav}, ${favWin.toFixed(1)}%`
+        : '';
 
-      const b = (c?.broadcasts || []).flatMap(x => x?.names || []).filter(Boolean);
-      const badges = b.slice(0, 3).map(x => `<span class="pill">${x}</span>`).join('');
+      const broadcasts =
+        (c?.broadcasts || [])
+        .flatMap(x => x?.names || [])
+        .filter(Boolean);
 
-      const getLeader = (teamObj, key) => {
-        const L = (teamObj?.leaders || []).find(l => l?.name === key);
+      const badges =
+        broadcasts
+        .slice(0,3)
+        .map(x => `<span class="pill">${x}</span>`)
+        .join('');
+
+      const getLeader = (teamObj,key)=>{
+        const L =
+          (teamObj?.leaders || [])
+          .find(l => l?.name === key);
+
         const top = L?.leaders?.[0];
         if (!top) return '';
-        const nm = top?.athlete?.shortName || top?.athlete?.displayName || '';
+
+        const nm =
+          top?.athlete?.shortName ||
+          top?.athlete?.displayName ||
+          '';
+
         const val = top?.displayValue || '';
-        return (nm && val) ? `${L.shortDisplayName || L.displayName || key}: ${nm} ${val}` : '';
+
+        return nm && val
+          ? `${L.shortDisplayName || key}: ${nm} ${val}`
+          : '';
       };
 
-      const favTeamObj = (fav === hAbbr) ? home : away;
+      const favTeamObj =
+        fav === hAbbr ? home : away;
+
       const leaders = [
-        getLeader(favTeamObj, 'points'),
-        getLeader(favTeamObj, 'rebounds'),
-        getLeader(favTeamObj, 'assists'),
-      ].filter(Boolean).join(' • ');
+        getLeader(favTeamObj,'points'),
+        getLeader(favTeamObj,'rebounds'),
+        getLeader(favTeamObj,'assists')
+      ]
+      .filter(Boolean)
+      .join(' • ');
 
       return `
-        <div class="wrap">
-          <div class="hdr">
-            <div class="side">
-              ${aLogo ? `<img class="logo" src="${aLogo}">` : ``}
-              <div class="abbr">${aAbbr}</div>
-              <div class="score">${aScore}</div>
-            </div>
+      <div class="wrap">
 
-            <div class="mid">
-              <div class="title">POSSESSION</div>
-              <div class="sub">${status}</div>
-              <div class="badges">${badges}</div>
-            </div>
+        <div class="hdr">
 
-            <div class="side">
-              <div class="score">${hScore}</div>
-              <div class="abbr">${hAbbr}</div>
-              ${hLogo ? `<img class="logo" src="${hLogo}">` : ``}
-            </div>
+          <div class="side">
+            ${aLogo ? `<img class="logo" src="${aLogo}">` : ''}
+            <div class="abbr">${aAbbr}</div>
+            <div class="score">${aScore}</div>
           </div>
 
-          <div class="court"></div>
+          <div class="mid">
+            <div class="title">POSSESSION</div>
+            <div class="sub">${status}</div>
+            <div class="badges">${badges}</div>
+          </div>
 
-          <div class="body">
-            <div class="row">
-              <div class="rail">
-                <div class="dot live"></div>
-                <div class="line"></div>
-              </div>
-              <div class="content">
-                <div class="topline">
-                  <div class="ptype">${playType}</div>
-                  <div class="wstr">${winStr}</div>
-                </div>
-                <div class="ptext">${playText}</div>
-                <div class="leaders">${leaders || '&nbsp;'}</div>
-              </div>
+          <div class="side">
+            <div class="score">${hScore}</div>
+            <div class="abbr">${hAbbr}</div>
+            ${hLogo ? `<img class="logo" src="${hLogo}">` : ''}
+          </div>
+
+        </div>
+
+        <div class="court"></div>
+
+        <div class="body">
+          <div class="row">
+
+            <div class="rail">
+              <div class="dot live"></div>
+              <div class="line"></div>
             </div>
+
+            <div class="content">
+
+              <div class="topline">
+                <div class="ptype">${playType}</div>
+                <div class="wstr">${winStr}</div>
+              </div>
+
+              <div class="ptext">${playText}</div>
+
+              <div class="leaders">
+                ${leaders || '&nbsp;'}
+              </div>
+
+            </div>
+
           </div>
         </div>
-      `;
+
+      </div>`;
     ]]]
 
 card_mod:
   style: |
-    .hdr{
-      height: 78px;
-      background: linear-gradient(180deg, rgba(70,70,70,0.95), rgba(55,55,55,0.95));
-      color: #fff;
-      display:grid;
-      grid-template-columns: 1fr 1.4fr 1fr;
-      align-items:center;
-      padding: 10px 12px;
-      gap: 10px;
+
+    ha-card {
+      position:relative;
+      font-size:clamp(11px,1vw,15px);
     }
-    .side{ display:flex; align-items:center; justify-content:center; gap:10px; min-width:0; }
-    .logo{ width:40px; height:40px; object-fit:contain; }
-    .abbr{ font-size:14px; font-weight:800; opacity:.85; letter-spacing:.8px; }
-    .score{ font-size:28px; font-weight:900; line-height:1; }
 
-    .mid{ display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; min-width:0; }
-    .title{ font-size:34px; font-weight:900; letter-spacing:2px; line-height:1; }
-    .sub{ font-size:13px; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    ha-card:before {
+      content:"";
+      position:absolute;
+      top:0;
+      left:0;
+      right:0;
+      height:clamp(3px,.35vw,5px);
+      background:rgba(255,0,0,.85);
+    }
 
-    .badges{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
-    .pill{ font-size:11px; font-weight:800; padding:3px 8px; border-radius:999px; background: rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.18); }
 
-    .court{
-      height: 92px;
+    .hdr {
+      min-height:clamp(64px,7vw,90px);
       background:
-        radial-gradient(circle at 50% 50%, rgba(200,120,40,0.18), rgba(0,0,0,0) 55%),
-        linear-gradient(180deg, rgba(240,240,240,0.95), rgba(255,255,255,1));
-      border-bottom: 1px solid rgba(0,0,0,0.08);
+        linear-gradient(
+          180deg,
+          rgba(70,70,70,.95),
+          rgba(55,55,55,.95)
+        );
+      color:white;
+
+      display:grid;
+      grid-template-columns:
+        1fr
+        clamp(180px,35%,360px)
+        1fr;
+
+      align-items:center;
+
+      padding:
+        clamp(8px,1vw,14px);
+
+      gap:
+        clamp(8px,1vw,14px);
     }
-    .body{ padding: 14px 16px 16px; background:#fff; }
-    .row{ display:grid; grid-template-columns: 18px 1fr; gap:12px; align-items:flex-start; }
 
-    .rail{ position:relative; display:flex; justify-content:center; }
-    .dot{ width:8px; height:8px; border-radius:999px; background: rgba(200,0,0,0.55); margin-top:6px; }
-    .dot.live{ background: rgba(200,0,0,1); box-shadow: 0 0 0 4px rgba(200,0,0,0.18); }
-    .line{ position:absolute; top:18px; bottom:-6px; width:4px; border-radius:999px; background: rgba(200,0,0,0.12); }
 
-    .topline{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
-    .ptype{ font-size:22px; font-weight:900; color:#111; }
-    .wstr{ font-size:14px; font-weight:800; color: rgba(0,0,0,0.55); white-space:nowrap; }
-    .ptext{ margin-top:6px; font-size:16px; color: rgba(0,0,0,0.85); line-height:1.25; }
-    .leaders{ margin-top:10px; font-size:13px; color: rgba(0,0,0,0.55); font-weight:700; }
+    .side {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:clamp(6px,1vw,12px);
+      min-width:0;
+    }
 
-    @media (max-width: 520px){
-      .title{ font-size:26px; }
-      .score{ font-size:24px; }
-      .logo{ width:34px; height:34px; }
-      .ptype{ font-size:18px; }
-      .wstr{ font-size:12px; }
+
+    .logo {
+      width:clamp(30px,3.5vw,46px);
+      height:clamp(30px,3.5vw,46px);
+      object-fit:contain;
+    }
+
+
+    .abbr {
+      font-size:clamp(11px,1vw,15px);
+      font-weight:800;
+      opacity:.85;
+      letter-spacing:.8px;
+    }
+
+
+    .score {
+      font-size:clamp(22px,3vw,40px);
+      font-weight:900;
+      line-height:1;
+    }
+
+
+    .mid {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:clamp(4px,.6vw,8px);
+      text-align:center;
+      min-width:0;
+    }
+
+
+    .title {
+      font-size:clamp(22px,3vw,36px);
+      font-weight:900;
+      letter-spacing:2px;
+      line-height:1;
+    }
+
+
+    .sub {
+      font-size:clamp(11px,1vw,14px);
+      opacity:.8;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:100%;
+    }
+
+
+    .badges {
+      display:flex;
+      gap:5px;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+
+
+    .pill {
+      font-size:clamp(9px,.8vw,12px);
+      font-weight:800;
+      padding:
+        clamp(2px,.3vw,4px)
+        clamp(6px,.7vw,10px);
+
+      border-radius:999px;
+      background:rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.18);
+    }
+
+
+    .court {
+      height:clamp(60px,8vw,110px);
+
+      background:
+        radial-gradient(
+          circle at 50% 50%,
+          rgba(200,120,40,.18),
+          rgba(0,0,0,0) 55%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(240,240,240,.95),
+          rgba(255,255,255,1)
+        );
+
+      border-bottom:
+        1px solid rgba(0,0,0,.08);
+    }
+
+
+    .body {
+      padding:
+        clamp(10px,1.2vw,16px);
+
+      background:#fff;
+    }
+
+
+    .row {
+      display:grid;
+      grid-template-columns:
+        clamp(12px,1.5vw,20px)
+        1fr;
+
+      gap:
+        clamp(8px,1vw,14px);
+    }
+
+
+    .dot {
+      width:clamp(7px,1vw,10px);
+      height:clamp(7px,1vw,10px);
+      border-radius:999px;
+      background:rgba(200,0,0,.55);
+      margin-top:6px;
+    }
+
+
+    .dot.live {
+      background:red;
+      box-shadow:
+        0 0 0 clamp(3px,.4vw,5px)
+        rgba(200,0,0,.18);
+    }
+
+
+    .line {
+      position:absolute;
+      top:18px;
+      bottom:-6px;
+      width:clamp(2px,.4vw,4px);
+      border-radius:999px;
+      background:rgba(200,0,0,.12);
+    }
+
+
+    .topline {
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap:10px;
+    }
+
+
+    .ptype {
+      font-size:clamp(16px,2vw,24px);
+      font-weight:900;
+    }
+
+
+    .wstr {
+      font-size:clamp(11px,1vw,15px);
+      font-weight:800;
+      white-space:nowrap;
+      color:rgba(0,0,0,.55);
+    }
+
+
+    .ptext {
+      margin-top:6px;
+      font-size:clamp(13px,1.4vw,18px);
+      color:rgba(0,0,0,.85);
+      line-height:1.25;
+    }
+
+
+    .leaders {
+      margin-top:10px;
+      font-size:clamp(11px,1vw,14px);
+      color:rgba(0,0,0,.55);
+      font-weight:700;
     }
   ```
 </details>

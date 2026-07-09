@@ -44,15 +44,17 @@ variables:
 styles:
   card:
     - border-radius: 20px
-    - padding: 0px
+    - padding: 0
     - overflow: hidden
     - background: rgba(20,20,24,0.70)
     - backdrop-filter: blur(10px)
     - border: 1px solid rgba(255,255,255,0.10)
+
   grid:
     - grid-template-areas: '"main"'
     - grid-template-columns: 1fr
     - grid-template-rows: 1fr
+
   custom_fields:
     main:
       - width: 100%
@@ -88,14 +90,13 @@ custom_fields:
         const aS = away?.score ?? '';
 
         const type = c?.status?.type || {};
-        const state = type?.state; // pre / in / post
+        const state = type?.state;
         const status = type?.shortDetail || type?.detail || type?.description || '';
 
         const nets = (c?.broadcasts || []).flatMap(b => b?.names || []).filter(Boolean);
         const net = nets.slice(0,2).join(' • ');
 
         const hasFav = (hA === fav) || (aA === fav);
-
         const liveRank = (state === 'in') ? 0 : (state === 'pre') ? 1 : 2;
 
         return {
@@ -157,36 +158,44 @@ custom_fields:
 
 card_mod:
   style: |
+    .wrap {
+      font-size: clamp(11px, 1.1vw, 15px);
+    }
+
     .hdr{
-      padding: 14px 16px 12px;
+      padding: clamp(10px, 1.2vw, 16px);
       border-bottom: 1px solid rgba(255,255,255,0.10);
       background: rgba(255,255,255,0.04);
     }
+
     .title{
       color: #fff;
-      font-size: 22px;
+      font-size: clamp(16px, 2vw, 24px);
       font-weight: 900;
       letter-spacing: 0.6px;
     }
+
     .sub{
       margin-top: 4px;
       color: rgba(255,255,255,0.65);
-      font-size: 13px;
+      font-size: clamp(11px, 1vw, 13px);
       font-weight: 700;
     }
 
-    .body{ padding: 10px 10px 12px; }
+    .body{
+      padding: clamp(8px, 1vw, 14px);
+    }
 
     .game{
       display:grid;
-      grid-template-columns: 84px 1fr 140px;
+      grid-template-columns: clamp(70px, 8vw, 100px) 1fr clamp(110px, 12vw, 160px);
       align-items:center;
-      gap: 10px;
-      padding: 10px 10px;
+      gap: clamp(8px, 1vw, 12px);
+      padding: clamp(8px, 1vw, 12px);
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,0.08);
       background: rgba(255,255,255,0.04);
-      margin-bottom: 10px;
+      margin-bottom: clamp(8px, 1vw, 12px);
     }
 
     .game.fav{
@@ -198,82 +207,65 @@ card_mod:
     .side{
       display:flex;
       align-items:center;
-      gap: 8px;
-      min-width: 0;
+      gap: clamp(6px, 0.8vw, 10px);
     }
 
     .abbr{
       color: rgba(255,255,255,0.80);
       font-weight: 900;
       letter-spacing: 0.6px;
+      font-size: 1em;
     }
 
     .logo{
-      width: 34px;
-      height: 34px;
+      width: clamp(26px, 2.4vw, 38px);
+      height: clamp(26px, 2.4vw, 38px);
       object-fit: contain;
       border-radius: 10px;
       background: rgba(255,255,255,0.06);
     }
 
-    .mid{ min-width: 0; }
-
     .match{
       color: #fff;
-      font-size: 16px;
+      font-size: clamp(13px, 1.2vw, 17px);
       font-weight: 900;
-      letter-spacing: 0.2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .at{ opacity: .5; margin: 0 6px; }
 
     .meta{
       margin-top: 4px;
       color: rgba(255,255,255,0.62);
-      font-size: 12px;
+      font-size: clamp(10px, 0.9vw, 12px);
       font-weight: 700;
       display:flex;
       flex-wrap: wrap;
       gap: 6px;
-      align-items:center;
     }
-    .dot{ opacity: .4; }
 
     .right{
       display:flex;
       align-items:center;
       justify-content:flex-end;
-      gap: 10px;
-      min-width: 0;
+      gap: clamp(6px, 0.8vw, 10px);
     }
 
     .score{
       color: #fff;
-      font-size: 18px;
+      font-size: clamp(14px, 1.4vw, 20px);
       font-weight: 900;
-      letter-spacing: 0.2px;
       white-space: nowrap;
     }
-    .dash{ opacity: .5; padding: 0 6px; }
 
     .pill{
-      color: rgba(255,255,255,0.90);
-      font-size: 11px;
+      font-size: clamp(10px, 0.9vw, 12px);
       font-weight: 900;
-      letter-spacing: 1px;
-      padding: 6px 10px;
+      padding: clamp(4px, 0.5vw, 7px) clamp(8px, 0.8vw, 12px);
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,0.14);
       background: rgba(255,255,255,0.06);
       white-space: nowrap;
-    }
-
-    @media (max-width: 520px){
-      .game{ grid-template-columns: 72px 1fr 120px; }
-      .match{ font-size: 14px; }
-      .score{ font-size: 16px; }
     }
   ```
 </details>

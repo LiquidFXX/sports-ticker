@@ -515,14 +515,6 @@ card_mod:
 <img width="1083" height="717" alt="image" src="https://github.com/user-attachments/assets/6a783502-2a53-4e07-9597-8b7fc2edee0d" />
 
 
-Uses your real payload paths:
-
-competitions[0].situation.lastPlay.text
-
-lastPlay.probability.homeWinPercentage / awayWinPercentage
-
-competitor.leaders[]
-
 <details> <summary><b>Click to expand the full POSSESSION card</b></summary>
 
 ```yaml

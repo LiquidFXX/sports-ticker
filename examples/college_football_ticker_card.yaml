@@ -5,8 +5,10 @@ show_icon: false
 show_state: false
 triggers_update:
   - sensor.espn_cfb_scoreboard_raw
+
 variables:
   src: sensor.espn_cfb_scoreboard_raw
+
 styles:
   card:
     - border-radius: 16px
@@ -15,13 +17,16 @@ styles:
     - background: rgba(255,255,255,0.96)
     - border: 1px solid rgba(0,0,0,0.10)
     - box-shadow: 0 10px 22px rgba(0,0,0,0.16)
+
   grid:
     - grid-template-areas: '"main"'
     - grid-template-columns: 1fr
     - grid-template-rows: 1fr
+
   custom_fields:
     main:
       - width: 100%
+
 custom_fields:
   main: |
     [[[
@@ -29,9 +34,6 @@ custom_fields:
       const events = st?.attributes?.events || [];
       const fav = String(st?.attributes?.favorite_team || '').toUpperCase();
 
-      // Use the integration's configured ticker speed as the only control.
-      // College Football uses a fixed 3x duration because its ticker track
-      // is much longer than MLB. This does not depend on the number of games.
       const configuredSpeed = Number(st?.attributes?.ticker_speed);
       const scrollDuration =
         Number.isFinite(configuredSpeed) && configuredSpeed > 0
@@ -62,7 +64,6 @@ custom_fields:
       const timeText = event => {
         const date = event?.date || getComp(event)?.date;
         if (!date) return 'TBD';
-
         return new Date(date).toLocaleTimeString([], {
           hour: 'numeric',
           minute: '2-digit'
@@ -71,7 +72,7 @@ custom_fields:
 
       if (!events.length) {
         return `
-          <div class="ticker-shell" style="--ticker-duration: ${scrollDuration}s;">
+          <div class="ticker-shell" style="--ticker-duration:${scrollDuration}s;">
             <div class="ticker-track static">
               <div class="ticker-tile">
                 <div class="ticker-top">
@@ -120,21 +121,13 @@ custom_fields:
           const homeAbbr = home.team?.abbreviation || 'HME';
           const awayScore = score(away);
           const homeScore = score(home);
+
           const awayNumber = parseNum(awayScore);
           const homeNumber = parseNum(homeScore);
           const showScores = state !== 'pre';
 
-          const awayLead =
-            showScores &&
-            awayNumber !== null &&
-            homeNumber !== null &&
-            awayNumber > homeNumber;
-
-          const homeLead =
-            showScores &&
-            awayNumber !== null &&
-            homeNumber !== null &&
-            homeNumber > awayNumber;
+          const awayLead = showScores && awayNumber > homeNumber;
+          const homeLead = showScores && homeNumber > awayNumber;
 
           const badge =
             state === 'in'
@@ -167,7 +160,7 @@ custom_fields:
         .join('<div class="sep"></div>');
 
       return `
-        <div class="ticker-shell" style="--ticker-duration: ${scrollDuration}s;">
+        <div class="ticker-shell" style="--ticker-duration:${scrollDuration}s; --tile-count:${events.length};">
           <div class="ticker-mask">
             <div class="ticker-track">
               ${tiles}
@@ -176,14 +169,16 @@ custom_fields:
         </div>
       `;
     ]]]
+
 card_mod:
   style: |
     .ticker-shell {
-      min-height: 64px;
       width: 100%;
+      height: clamp(56px, 6vw, 90px);
       display: flex;
       align-items: center;
       background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,243,246,0.98));
+      font-size: clamp(10px, 1.2vw, 14px);
     }
 
     .ticker-mask {
@@ -198,8 +193,7 @@ card_mod:
       align-items: center;
       white-space: nowrap;
       padding-left: 100%;
-      animation: cfb-marquee var(--ticker-duration, 36s) linear infinite;
-      will-change: transform;
+      animation: cfb-marquee calc(var(--ticker-duration, 36s) * (var(--tile-count, 6) / 6)) linear infinite;
     }
 
     .ticker-track.static {
@@ -209,107 +203,71 @@ card_mod:
       animation: none;
     }
 
-    ha-card:hover .ticker-track {
-      animation-play-state: paused;
-    }
-
     @keyframes cfb-marquee {
       0% { transform: translateX(0); }
       100% { transform: translateX(-100%); }
     }
 
     .ticker-tile {
-      min-width: 200px;
-      padding: 7px 12px;
+      min-width: clamp(160px, 18vw, 260px);
+      padding: clamp(6px, 0.8vw, 12px) clamp(10px, 1vw, 16px);
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: clamp(3px, 0.4vw, 6px);
     }
 
     .sep {
-      height: 46px;
+      height: clamp(36px, 4vw, 56px);
       border-right: 1px solid rgba(0,0,0,0.11);
     }
 
     .ticker-top {
       display: flex;
-      align-items: center;
       gap: 6px;
     }
 
     .pill {
-      font-size: 10px;
+      font-size: clamp(9px, 0.9vw, 11px);
       font-weight: 900;
-      padding: 3px 8px;
+      padding: clamp(2px, 0.4vw, 4px) clamp(6px, 0.8vw, 10px);
       border-radius: 999px;
-      letter-spacing: 0.5px;
       border: 1px solid rgba(0,0,0,0.12);
       background: rgba(255,255,255,0.88);
-      color: rgba(0,0,0,0.72);
     }
 
-    .pill.live {
-      background: rgba(215,0,0,0.95);
-      color: #fff;
-      border-color: rgba(215,0,0,0.95);
-    }
-
-    .pill.final {
-      background: rgba(20,20,20,0.88);
-      color: #fff;
-      border-color: rgba(20,20,20,0.88);
-    }
-
-    .pill.meta {
-      color: rgba(0,0,0,0.55);
-    }
+    .pill.live { background: rgba(215,0,0,0.95); color: #fff; }
+    .pill.final { background: rgba(20,20,20,0.88); color: #fff; }
 
     .ticker-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      line-height: 1.1;
-    }
-
-    .ticker-row.single {
-      color: rgba(0,0,0,0.72);
-      font-size: 13px;
-      font-weight: 900;
-    }
-
-    .win-dot {
-      width: 8px;
-      height: 8px;
-      flex: 0 0 8px;
-      border-radius: 50%;
-      background: rgba(0,0,0,0.12);
-      border: 1px solid rgba(0,0,0,0.14);
-    }
-
-    .win-dot.on {
-      background: #2ecc71;
-      border-color: rgba(46,204,113,0.85);
-      box-shadow: 0 0 10px rgba(46,204,113,0.42);
     }
 
     .team-logo {
-      width: 20px;
-      height: 20px;
-      object-fit: contain;
-      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.20));
+      width: clamp(16px, 1.6vw, 24px);
+      height: clamp(16px, 1.6vw, 24px);
     }
 
     .team-abbr {
-      min-width: 38px;
-      font-size: 13px;
-      font-weight: 1000;
-      letter-spacing: 0.3px;
-      color: rgba(0,0,0,0.82);
+      min-width: clamp(30px, 3vw, 44px);
+      font-size: 1em;
+      font-weight: 900;
     }
 
     .team-score {
       margin-left: auto;
-      font-size: 13px;
-      font-weight: 1000;
-      color: rgba(0,0,0,0.88);
+      font-size: 1em;
+      font-weight: 900;
+    }
+
+    .win-dot {
+      width: clamp(6px, 0.6vw, 10px);
+      height: clamp(6px, 0.6vw, 10px);
+      border-radius: 50%;
+      background: rgba(0,0,0,0.12);
+    }
+
+    .win-dot.on {
+      background: #2ecc71;
     }

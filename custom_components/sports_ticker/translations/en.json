@@ -32,7 +32,12 @@
           "favorite_team_bundesliga": "Bundesliga favorite team",
           "favorite_team_seriea": "Serie A favorite team",
           "favorite_team_ligue1": "Ligue 1 favorite team",
-          "favorite_team_ucl": "Champions League favorite team"
+          "favorite_team_ucl": "Champions League favorite team",
+          "favorite_team_brasileirao": "Brasileirão Série A favorite team",
+          "favorite_team_brasileiraob": "Brasileirão Série B favorite team",
+          "favorite_team_copadobrasil": "Copa do Brasil favorite team",
+          "favorite_team_libertadores": "Copa Libertadores favorite team",
+          "favorite_team_sulamericana": "Copa Sul-Americana favorite team"
         }
       }
     },
@@ -73,7 +78,12 @@
           "favorite_team_bundesliga": "Bundesliga favorite team",
           "favorite_team_seriea": "Serie A favorite team",
           "favorite_team_ligue1": "Ligue 1 favorite team",
-          "favorite_team_ucl": "Champions League favorite team"
+          "favorite_team_ucl": "Champions League favorite team",
+          "favorite_team_brasileirao": "Brasileirão Série A favorite team",
+          "favorite_team_brasileiraob": "Brasileirão Série B favorite team",
+          "favorite_team_copadobrasil": "Copa do Brasil favorite team",
+          "favorite_team_libertadores": "Copa Libertadores favorite team",
+          "favorite_team_sulamericana": "Copa Sul-Americana favorite team"
         }
       }
     },

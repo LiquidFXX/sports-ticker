@@ -8,6 +8,12 @@
 
 ---
 
+## 📣 What's new in v0.0.19
+
+- 🌎 **South American soccer leagues**
+  - Added Brasileirão Série A, Brasileirão Série B, Copa do Brasil, Copa Libertadores, and Copa Sul-Americana
+  - Favorite team selection is available for each new league
+
 ## 📣 What's new in v0.0.18.2
 
 - 🎚️ **Improved ticker speed controls**
@@ -83,6 +89,14 @@
 - Serie A
 - Ligue 1
 - Champions League
+
+### South American soccer
+
+- Brasileirão Série A
+- Brasileirão Série B
+- Copa do Brasil (Copa Betano)
+- Copa Libertadores
+- Copa Sul-Americana
 
 ---
 
@@ -166,6 +180,11 @@ sensor.espn_bundesliga_scoreboard_raw
 sensor.espn_seriea_scoreboard_raw
 sensor.espn_ligue1_scoreboard_raw
 sensor.espn_ucl_scoreboard_raw
+sensor.espn_brasileirao_scoreboard_raw
+sensor.espn_brasileiraob_scoreboard_raw
+sensor.espn_copadobrasil_scoreboard_raw
+sensor.espn_libertadores_scoreboard_raw
+sensor.espn_sulamericana_scoreboard_raw
 ```
 
 ### Main scoreboard attributes

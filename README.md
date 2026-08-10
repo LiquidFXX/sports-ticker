@@ -8,25 +8,22 @@
 
 ---
 
-## 📣 What's new in v0.0.18.2
+## 📣 What's new in v0.0.19
 
-- 🎚️ **Improved ticker speed controls**
-  - Ticker speed now supports values from **4 to 60 seconds**
-  - The options screen now explains that **lower values scroll faster** and **higher values scroll slower**
-  - The configured value is exposed through each scoreboard sensor as `ticker_speed`
+- 🏈 **Favorite-team NFL next game sensor**
+  - Added `sensor.espn_nfl_next_game` when NFL is enabled
+  - Uses the NFL favorite selected in Sports Ticker options
+  - Reads that team's ESPN schedule and selects the earliest future scheduled game
+  - Avoids depending only on the current-week league scoreboard
 
-- 🏈 **College Football ticker example**
-  - Added a complete scrolling College Football ticker card
-  - Reads `ticker_speed` directly from `sensor.espn_cfb_scoreboard_raw`
-  - Reads the configured favorite team from the sensor attributes
+- 📅 **Automation-friendly next-game details**
+  - The sensor state is a compact matchup such as `KC @ BUF`
+  - Attributes include kickoff date/time, opponent, home/away, venue, broadcast networks, week/season, team logos, and the raw ESPN event
+  - Explicit states are returned when no NFL favorite is selected or no future game is available
 
-- 🗂️ **Reorganized examples**
-  - All Lovelace example cards now live in one top-level `examples/` folder
-  - Example filenames were standardized and renamed for clarity
-
-- 🧹 **Cleaner configuration flow**
-  - Shared setup and options schemas reduce duplicated code
-  - Speed values now display in seconds
+- 🛡️ **Resilient schedule updates**
+  - Keeps the last successful next-game result in memory if ESPN temporarily fails
+  - Exposes freshness and error metadata for dashboards and automations
 
 ---
 
@@ -35,6 +32,7 @@
 - Creates live ESPN scoreboard sensors for selected leagues
 - Exposes raw ESPN scoreboard data for Lovelace cards
 - Lets you select a favorite team for each league
+- Creates a favorite-team NFL next-game sensor when NFL is enabled
 - Exposes ticker speed and theme settings as sensor attributes
 - Keeps the last good scoreboard data if ESPN is temporarily unavailable
 - Adds cache and freshness attributes for dashboard status indicators
@@ -140,6 +138,8 @@ Choose a favorite team for each selected league. Dashboard cards can use this in
 - Highlight favorite teams
 - Build team-focused cards
 
+The selected NFL favorite also drives `sensor.espn_nfl_next_game`.
+
 ---
 
 ## 🧠 Entities and sensors
@@ -167,6 +167,42 @@ sensor.espn_seriea_scoreboard_raw
 sensor.espn_ligue1_scoreboard_raw
 sensor.espn_ucl_scoreboard_raw
 ```
+
+### NFL favorite next game
+
+When NFL is enabled, Sports Ticker also creates:
+
+```text
+sensor.espn_nfl_next_game
+```
+
+The sensor follows the NFL favorite selected in the integration options. Its state is the next matchup, for example:
+
+```text
+KC @ BUF
+```
+
+Useful attributes include:
+
+```yaml
+favorite_team: KC
+favorite_team_name: Kansas City Chiefs
+has_upcoming_game: true
+date: "2026-09-01T00:00:00Z"
+home_team: BUF
+away_team: KC
+home_away: away
+opponent: BUF
+opponent_name: Buffalo Bills
+venue: Highmark Stadium
+broadcasts:
+  - CBS
+week: 1
+stale: false
+source: espn
+```
+
+If no NFL favorite is configured, the state is `No favorite team`. If ESPN returns no future scheduled event for that favorite, the state is `No upcoming game`.
 
 ### Main scoreboard attributes
 
@@ -222,6 +258,7 @@ All example cards are now stored in the top-level [`examples`](examples/) folder
 
 | Example | Description |
 | :--- | :--- |
+| [`NFL.md`](examples/NFL.md) | NFL ticker, schedule, gamecast, featured matchup, and next-game entity examples |
 | [`college_football_ticker_card.yaml`](examples/college_football_ticker_card.yaml) | Scrolling College Football ticker that uses the configured favorite team and ticker speed |
 | [`multi_league_ticker_card.yaml`](examples/multi_league_ticker_card.yaml) | Reusable ticker card template for supported leagues |
 | [`mlb_example_cards.md`](examples/mlb_example_cards.md) | MLB ticker, schedule, gamecast, standings, and stats layouts |
@@ -289,7 +326,7 @@ Verify that:
 
 ## 📌 Version
 
-Current version: **v0.0.18.2**
+Current version: **v0.0.19**
 
 ---
 

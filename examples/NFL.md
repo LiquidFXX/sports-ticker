@@ -39,7 +39,7 @@ sensor.espn_nfl_next_game
 
 A featured next-game card that automatically follows the NFL favorite selected in Sports Ticker. It shows the favorite team, opponent, kickoff date and time, venue, broadcast, week, and whether the game is home or away.
 
-<img src="images/nfl_next_game_card.jpg" alt="NFL Next Game card example" width="520">
+<img src="images/nfl_next_game_card.svg" alt="NFL Next Game card example" width="520">
 
 > No team abbreviation needs to be hard-coded. The card reads the configured favorite directly from `sensor.espn_nfl_next_game`.
 

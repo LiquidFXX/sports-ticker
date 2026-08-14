@@ -154,7 +154,10 @@ custom_fields:
 
         const stState = e?.status?.type?.state ?? '';
         const stShort = e?.status?.type?.shortDetail ?? '';
-        const when = new Date(e.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const gameDate = new Date(e.date);
+        const gameDay = gameDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        const gameTime = gameDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const when = `${gameDay} ${gameTime}`;
 
         const aLogo = logoUrl(away?.team, aAbbr);
         const hLogo = logoUrl(home?.team, hAbbr);

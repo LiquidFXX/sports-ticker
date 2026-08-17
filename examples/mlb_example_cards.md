@@ -47,7 +47,7 @@ A compact scrolling ticker designed for the top or bottom of a dashboard. It sho
 
 ![MLB ticker example](https://github.com/user-attachments/assets/5f63fdf8-9eaf-4400-a3b2-fd7f04b7ea17)
 
-<details open>
+<details>
 <summary>Copy YAML</summary>
 
 ```yaml

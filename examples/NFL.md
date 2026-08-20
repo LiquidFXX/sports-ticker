@@ -43,7 +43,7 @@ A featured next-game card that automatically follows the NFL favorite selected i
 
 > No team abbreviation needs to be hard-coded. The card reads the configured favorite directly from `sensor.espn_nfl_next_game`.
 
-<details open>
+<details>
 <summary>Copy YAML</summary>
 
 ```yaml

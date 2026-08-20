@@ -41,7 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           cd custom_components/sports_ticker
-          zip -r ../../../sports_ticker.zip . \
+          zip -r ../../sports_ticker.zip . \
             -x "__pycache__/*" "*.pyc" "*.pyo"
 
       - name: Verify release ZIP

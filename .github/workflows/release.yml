@@ -2,8 +2,11 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+    paths:
+      - "custom_components/sports_ticker/manifest.json"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,7 +18,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify tag matches manifest version
+      - name: Read release version
+        id: version
         shell: bash
         run: |
           set -euo pipefail
@@ -29,12 +33,8 @@ jobs:
           print(manifest['version'])
           PY
           )"
-          tag_version="${GITHUB_REF_NAME#v}"
-
-          if [[ "$manifest_version" != "$tag_version" ]]; then
-            echo "manifest.json version ($manifest_version) does not match tag ($GITHUB_REF_NAME)"
-            exit 1
-          fi
+          echo "version=$manifest_version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$manifest_version" >> "$GITHUB_OUTPUT"
 
       - name: Build HACS release ZIP
         shell: bash
@@ -55,14 +55,16 @@ jobs:
       - name: Create release or upload asset
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
 
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" sports_ticker.zip --clobber
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" sports_ticker.zip --clobber
           else
-            gh release create "$GITHUB_REF_NAME" sports_ticker.zip \
-              --title "$GITHUB_REF_NAME" \
+            gh release create "$RELEASE_TAG" sports_ticker.zip \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TAG" \
               --generate-notes
           fi

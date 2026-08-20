@@ -27,6 +27,24 @@
 
 ---
 
+## 🚧 Next: v0.0.20 — Football Season
+
+The next release is focused on getting Sports Ticker ready for football season.
+
+Planned work:
+
+- 🏈 Add a favorite-team College Football next-game sensor
+- 🏈 Standardize NFL and College Football next-game attributes
+- 📅 Improve preseason, regular-season, postseason, bye-week, neutral-site, and schedule-change handling
+- 🏆 Improve College Football rankings, conference, bowl, and playoff context where ESPN provides it
+- 🧩 Update NFL and College Football dashboard examples to use native Sports Ticker sensors where possible
+- 📦 Add HACS-compatible release ZIP packaging so GitHub/HACS release downloads can be counted
+- ✅ Keep HACS and Hassfest validation in the release workflow
+
+The published integration remains **v0.0.19** until the v0.0.20 work is complete and released.
+
+---
+
 ## ✨ What this integration does
 
 - Creates live ESPN scoreboard sensors for selected leagues
@@ -52,6 +70,7 @@
 | Configuration | Leagues, favorites, ticker speed, and theme | [Jump](#️-configuration) |
 | Sensors | Entity names and available attributes | [Jump](#-entities--sensors) |
 | Examples | Ready-to-use Lovelace cards | [Jump](#-lovelace-examples) |
+| Planned sports | Season-based expansion roadmap | [Jump](#️-planned-sports-roadmap) |
 | Troubleshooting | Common setup and dashboard issues | [Jump](#️-troubleshooting) |
 
 ---
@@ -81,6 +100,48 @@
 - Serie A
 - Ligue 1
 - Champions League
+
+---
+
+## 🗺️ Planned sports roadmap
+
+New sports are targeted for releases **before their seasons or major annual competitions begin**, leaving time for testing, documentation, and dashboard examples. Version targets may move if ESPN data is not reliable enough for production support or if an official season calendar changes.
+
+| Version | Target release | Sport / focus | Seasonal goal |
+| :--- | :--- | :--- | :--- |
+| **v0.0.20** | Aug–Sep 2026 | 🏈 NFL + College Football | Football-season foundation; improve existing football support before kickoff |
+| **v0.0.21** | Oct 2026 | 🏀 College Basketball | Land before the November college basketball season |
+| **v0.0.22** | Dec 2026 | 🎾 Tennis | Land before the January 2027 Australian Open; begin with ATP/WTA and major tournaments |
+| **v0.0.23** | Jan 2027 | 🏉 Rugby Union | Land before the 2027 Six Nations begins in early February |
+| **v0.0.24** | Early Feb 2027 | 🏉 Rugby League | Land before the 2027 NRL season begins in late February |
+| **v0.0.25** | Feb 2027* | 🏎️ Formula 1 | Land before the 2027 F1 season; establish the motorsport event model |
+| **v0.0.26** | Feb–Mar 2027* | 🦘 Australian Rules Football | Land before the 2027 AFL season |
+| **v0.0.27** | Mar 2027 | 🏏 Cricket | Target the major spring T20 / IPL window while building a year-round cricket model |
+| **v0.0.28** | Pre-season target | 🏍️ MotoGP | Reuse the motorsport architecture established for Formula 1 |
+| **v0.0.29** | Pre-season target | 🏎️ IndyCar | Add before a future IndyCar season begins |
+| **v0.0.30** | Jan 2028 | ⚾🥎 College Baseball + Softball | Land before the NCAA spring schedules begin |
+| **v0.0.31** | Pre-season target | 🏒 College Hockey | Land before an NCAA hockey season begins |
+
+\* Target month is provisional until the relevant official season calendar is published.
+
+### Future event-driven candidates
+
+These sports do not follow a single traditional season, so they can fit between seasonal releases once the common event model is ready:
+
+- 🥋 MMA / UFC
+- 🥊 Boxing
+
+### Additional seasonal candidates
+
+- 🏐 Volleyball
+- 🤾 Handball
+- 🥍 Lacrosse
+- 🏑 Field Hockey
+- 🏒 International and non-NHL hockey
+- 🏈 Canadian Football
+- 🏎️ Endurance racing and additional motorsport series
+
+A planned sport becomes an official release target only after its ESPN scoreboard, schedule, competitor, status, and event data are verified as reliable enough for Home Assistant use.
 
 ---
 

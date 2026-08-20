@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches manifest version
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest_version="$(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(
+              Path('custom_components/sports_ticker/manifest.json').read_text()
+          )
+          print(manifest['version'])
+          PY
+          )"
+          tag_version="${GITHUB_REF_NAME#v}"
+
+          if [[ "$manifest_version" != "$tag_version" ]]; then
+            echo "manifest.json version ($manifest_version) does not match tag ($GITHUB_REF_NAME)"
+            exit 1
+          fi
+
+      - name: Build HACS release ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd custom_components/sports_ticker
+          zip -r ../../../sports_ticker.zip . \
+            -x "__pycache__/*" "*.pyc" "*.pyo"
+
+      - name: Verify release ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f sports_ticker.zip
+          unzip -t sports_ticker.zip
+          unzip -l sports_ticker.zip
+
+      - name: Create release or upload asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" sports_ticker.zip --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" sports_ticker.zip \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes
+          fi

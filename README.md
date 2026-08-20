@@ -8,40 +8,27 @@
 
 ---
 
-## 📣 What's new in v0.0.19
+## 📣 What's new in v0.0.20
 
-- 🏈 **Favorite-team NFL next game sensor**
-  - Added `sensor.espn_nfl_next_game` when NFL is enabled
-  - Uses the NFL favorite selected in Sports Ticker options
+- 🏈 **Favorite-team College Football next game sensor**
+  - Added `sensor.espn_cfb_next_game` when College Football is enabled
+  - Uses the College Football favorite selected in Sports Ticker options
   - Reads that team's ESPN schedule and selects the earliest future scheduled game
-  - Avoids depending only on the current-week league scoreboard
 
-- 📅 **Automation-friendly next-game details**
-  - The sensor state is a compact matchup such as `KC @ BUF`
-  - Attributes include kickoff date/time, opponent, home/away, venue, broadcast networks, week/season, team logos, and the raw ESPN event
-  - Explicit states are returned when no NFL favorite is selected or no future game is available
+- 🏈 **Shared NFL + College Football next-game model**
+  - Preserves `sensor.espn_nfl_next_game`
+  - Standardizes matchup, opponent, home/away, kickoff, venue, broadcast, season/week, logos, records, rankings, and freshness attributes where ESPN provides them
+  - Adds College Football context such as neutral-site and conference-game information when available
+  - Keeps the last successful next-game result if ESPN temporarily fails
 
-- 🛡️ **Resilient schedule updates**
-  - Keeps the last successful next-game result in memory if ESPN temporarily fails
-  - Exposes freshness and error metadata for dashboards and automations
+- 📦 **HACS release ZIP support**
+  - Releases now publish `sports_ticker.zip`
+  - HACS is configured to install from the release asset
+  - GitHub release asset downloads provide the download metric HACS can use without adding installation telemetry
 
----
-
-## 🚧 Next: v0.0.20 — Football Season
-
-The next release is focused on getting Sports Ticker ready for football season.
-
-Planned work:
-
-- 🏈 Add a favorite-team College Football next-game sensor
-- 🏈 Standardize NFL and College Football next-game attributes
-- 📅 Improve preseason, regular-season, postseason, bye-week, neutral-site, and schedule-change handling
-- 🏆 Improve College Football rankings, conference, bowl, and playoff context where ESPN provides it
-- 🧩 Update NFL and College Football dashboard examples to use native Sports Ticker sensors where possible
-- 📦 Add HACS-compatible release ZIP packaging so GitHub/HACS release downloads can be counted
-- ✅ Keep HACS and Hassfest validation in the release workflow
-
-The published integration remains **v0.0.19** until the v0.0.20 work is complete and released.
+- 🗺️ **Season-based sports roadmap**
+  - Added planned sport releases timed ahead of their seasons or major annual competitions
+  - Future targets include College Basketball, Tennis, Rugby, Formula 1, AFL, Cricket, MotoGP, IndyCar, and more
 
 ---
 
@@ -50,7 +37,7 @@ The published integration remains **v0.0.19** until the v0.0.20 work is complete
 - Creates live ESPN scoreboard sensors for selected leagues
 - Exposes raw ESPN scoreboard data for Lovelace cards
 - Lets you select a favorite team for each league
-- Creates a favorite-team NFL next-game sensor when NFL is enabled
+- Creates favorite-team NFL and College Football next-game sensors when those leagues are enabled
 - Exposes ticker speed and theme settings as sensor attributes
 - Keeps the last good scoreboard data if ESPN is temporarily unavailable
 - Adds cache and freshness attributes for dashboard status indicators
@@ -199,7 +186,7 @@ Choose a favorite team for each selected league. Dashboard cards can use this in
 - Highlight favorite teams
 - Build team-focused cards
 
-The selected NFL favorite also drives `sensor.espn_nfl_next_game`.
+The selected NFL and College Football favorites also drive their next-game sensors.
 
 ---
 
@@ -229,15 +216,16 @@ sensor.espn_ligue1_scoreboard_raw
 sensor.espn_ucl_scoreboard_raw
 ```
 
-### NFL favorite next game
+### Football favorite next game
 
-When NFL is enabled, Sports Ticker also creates:
+When NFL or College Football is enabled, Sports Ticker creates the corresponding favorite-team next-game sensor:
 
 ```text
 sensor.espn_nfl_next_game
+sensor.espn_cfb_next_game
 ```
 
-The sensor follows the NFL favorite selected in the integration options. Its state is the next matchup, for example:
+Each sensor follows the favorite selected for that league. Its state is the next matchup, for example:
 
 ```text
 KC @ BUF
@@ -246,6 +234,7 @@ KC @ BUF
 Useful attributes include:
 
 ```yaml
+league: nfl
 favorite_team: KC
 favorite_team_name: Kansas City Chiefs
 has_upcoming_game: true
@@ -263,7 +252,9 @@ stale: false
 source: espn
 ```
 
-If no NFL favorite is configured, the state is `No favorite team`. If ESPN returns no future scheduled event for that favorite, the state is `No upcoming game`.
+College Football exposes the same common model and also includes additional context such as rankings, records, neutral-site status, and conference-game information when ESPN provides it.
+
+If no favorite is configured, the sensor state is `No favorite team`. If ESPN returns no future scheduled event for that favorite, the state is `No upcoming game`.
 
 ### Main scoreboard attributes
 
@@ -387,7 +378,7 @@ Verify that:
 
 ## 📌 Version
 
-Current version: **v0.0.19**
+Current version: **v0.0.20**
 
 ---
 

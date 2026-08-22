@@ -8,7 +8,7 @@
 
 ---
 
-## 📣 What's new in v0.0.20
+## 📦 v0.0.20 — Football foundation
 
 - 🏈 **Favorite-team College Football next game sensor**
   - Added `sensor.espn_cfb_next_game` when College Football is enabled
@@ -32,7 +32,7 @@
 
 ---
 
-## 🚧 In development for v0.20.1
+## 📣 What's new in v0.20.1
 
 - 🏆 **College Football rankings sensor**
   - Adds `sensor.espn_cfb_rankings` whenever College Football is enabled
@@ -154,7 +154,7 @@ Examples:
 - `v0.21.0` — next feature release line
 - `v0.21.1` — follow-up update to v0.21
 
-The currently published release remains **v0.0.20** so the existing GitHub/HACS history stays accurate. The **next release will begin the new structure at v0.20.1**.
+The current release is **v0.20.1**, beginning the new feature-line version structure. Future Football fixes and refinements can use `v0.20.2`, `v0.20.3`, and so on before the next feature line starts at `v0.21.0`.
 
 | Version | Target release | Sport / focus | Seasonal goal |
 | :--- | :--- | :--- | :--- |
@@ -488,9 +488,9 @@ Verify that:
 
 ## 📌 Version
 
-Current published version: **v0.0.20**
+Current published version: **v0.20.1**
 
-Next sub-update: **v0.20.1**
+Next Football sub-update: **v0.20.2**
 
 Going forward, feature lines use `v0.<feature>.0` and follow-up fixes/improvements increment the final number, for example `v0.20.1`, `v0.20.2`, then `v0.21.0`.
 

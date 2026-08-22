@@ -1,17 +1,17 @@
 name: Add NFL highlights rail docs once
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/nfl-highlights-rail-once.yml
+  issues:
+    types:
+      - opened
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   update-nfl-docs:
+    if: github.event.issue.title == 'Run NFL highlights rail docs update'
     runs-on: ubuntu-latest
 
     steps:
@@ -47,7 +47,7 @@ jobs:
           elif new_heading in text:
               start = text.index(new_heading)
           else:
-              raise SystemExit("Could not find NFL Game Highlights section")
+              raise SystemExit("Could not find NFL highlights section")
 
           end = text.index("## 🛠️ Troubleshooting", start)
 
@@ -92,4 +92,7 @@ The reusable card is also stored in [`nfl_highlights_rail_card.yaml`](nfl_highli
           git commit -m "Add NFL highlights rail example"
           git push
 
-# Triggered through a merged workflow-file change.
+      - name: Close trigger issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue close "${{ github.event.issue.number }}" --comment "NFL Highlights Rail docs updated."

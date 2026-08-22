@@ -1,0 +1,57 @@
+name: Finalize v0.20.1 README
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/finalize-v0201-readme.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Finalize release documentation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('README.md')
+          text = path.read_text()
+
+          text = text.replace(
+              "## 📣 What's new in v0.0.20",
+              "## 📦 v0.0.20 — Football foundation",
+              1,
+          )
+          text = text.replace(
+              "## 🚧 In development for v0.20.1",
+              "## 📣 What's new in v0.20.1",
+              1,
+          )
+          text = text.replace(
+              "The currently published release remains **v0.0.20** so the existing GitHub/HACS history stays accurate. The **next release will begin the new structure at v0.20.1**.",
+              "The current release is **v0.20.1**, beginning the new feature-line version structure. Future Football fixes and refinements can use `v0.20.2`, `v0.20.3`, and so on before the next feature line starts at `v0.21.0`.",
+          )
+          text = text.replace(
+              "Current published version: **v0.0.20**\n\nNext sub-update: **v0.20.1**",
+              "Current published version: **v0.20.1**\n\nNext Football sub-update: **v0.20.2**",
+          )
+
+          path.write_text(text)
+          PY
+
+      - name: Remove one-time workflow
+        run: rm .github/workflows/finalize-v0201-readme.yml
+
+      - name: Commit README update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md .github/workflows/finalize-v0201-readme.yml
+          git commit -m "Finalize v0.20.1 release documentation"
+          git push

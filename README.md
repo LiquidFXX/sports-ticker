@@ -32,6 +32,17 @@
 
 ---
 
+## 🚧 In development for v0.20.1
+
+- 🏆 **College Football rankings sensor**
+  - Adds `sensor.espn_cfb_rankings` whenever College Football is enabled
+  - Exposes all polls ESPN currently provides, including AP Top 25, Coaches Poll, and College Football Playoff rankings when available
+  - Normalizes current rank, previous rank, trend, record, first-place votes, points, team colors, logos, and dropped-out teams
+  - Provides card-friendly aliases: `ap_top_25`, `coaches_poll`, and `cfp`
+  - Preserves the last successful ranking data if ESPN is temporarily unavailable
+
+---
+
 ## 🏈 NFL card showcase
 
 The NFL examples are being rebuilt around cards that are useful day-to-day. The current set includes a favorite-team next-game card, a multi-sport scrolling ticker, and a playable ESPN highlights card.
@@ -70,6 +81,7 @@ Finds playable ESPN highlights from the NFL scoreboard data and combines the vid
 - Exposes raw ESPN scoreboard data for Lovelace cards
 - Lets you select a favorite team for each league
 - Creates favorite-team NFL and College Football next-game sensors when those leagues are enabled
+- Creates a normalized College Football rankings sensor when CFB is enabled
 - Exposes ticker speed and theme settings as sensor attributes
 - Keeps the last good scoreboard data if ESPN is temporarily unavailable
 - Adds cache and freshness attributes for dashboard status indicators
@@ -146,7 +158,7 @@ The currently published release remains **v0.0.20** so the existing GitHub/HACS 
 
 | Version | Target release | Sport / focus | Seasonal goal |
 | :--- | :--- | :--- | :--- |
-| **v0.20.1** | Aug–Sep 2026 | 🏈 NFL + College Football | Football sub-update: cards, examples, CFB/NFL refinements, and season-ready fixes |
+| **v0.20.1** | Aug–Sep 2026 | 🏈 NFL + College Football | Football sub-update: cards, examples, CFB rankings, CFB/NFL refinements, and season-ready fixes |
 | **v0.21.0** | Oct 2026 | 🏀 College Basketball | Land before the November college basketball season |
 | **v0.22.0** | Dec 2026 | 🎾 Tennis | Land before the January 2027 Australian Open; begin with ATP/WTA and major tournaments |
 | **v0.23.0** | Jan 2027 | 🏉 Rugby Union | Land before the 2027 Six Nations begins in early February |
@@ -306,6 +318,54 @@ College Football exposes the same common model and also includes additional cont
 
 If no favorite is configured, the sensor state is `No favorite team`. If ESPN returns no future scheduled event for that favorite, the state is `No upcoming game`.
 
+### College Football rankings
+
+When College Football is enabled, Sports Ticker also creates:
+
+```text
+sensor.espn_cfb_rankings
+```
+
+The state identifies the preferred current poll and the number of ranked teams, for example:
+
+```text
+AP Top 25 - 25 teams
+```
+
+The sensor exposes all polls currently returned by ESPN. Card-friendly aliases make the major polls easy to use directly:
+
+```yaml
+season: 2026
+week: 1
+primary_poll: ap_top_25
+ap_top_25:
+  - rank: 1
+    previous_rank: 2
+    trend: 1
+    abbreviation: TEX
+    display_name: Texas Longhorns
+    record: 0-0
+    first_place_votes: 25
+    points: 1525
+    logo: https://...
+coaches_poll:
+  - ...
+cfp:
+  - ...
+polls:
+  ap_top_25:
+    name: AP Top 25
+    headline: ...
+    ranks:
+      - ...
+    dropped_out:
+      - ...
+stale: false
+source: espn
+```
+
+The `cfp` list can be empty early in the season before the College Football Playoff committee publishes its first rankings. `ap_top_25` and `coaches_poll` are populated whenever ESPN provides those polls.
+
 ### Main scoreboard attributes
 
 ```yaml
@@ -363,8 +423,8 @@ All example cards are stored in the top-level [`examples`](examples/) folder.
 | [`NFL.md`](examples/NFL.md) | Favorite-team next game, multi-sport scrolling ticker, and playable NFL game highlights |
 | [`college_football_ticker_card.yaml`](examples/college_football_ticker_card.yaml) | Scrolling College Football ticker that uses the configured favorite team and ticker speed |
 | [`multi_league_ticker_card.yaml`](examples/multi_league_ticker_card.yaml) | Reusable ticker card template for supported leagues |
-| [`mlb_example_cards.md`](examples/mlb_example_cards.md) | MLB ticker, schedule, gamecast, standings, and stats layouts |
-| [`nba_example_cards.md`](examples/nba_example_cards.md) | NBA schedule, ticker, and dashboard card examples |
+| [`MLB.md`](examples/MLB.md) | MLB ticker, schedule, gamecast, standings, and stats layouts |
+| [`NBA.md`](examples/NBA.md) | NBA schedule, ticker, and dashboard card examples |
 
 The College Football ticker reads integration options directly from the scoreboard sensor:
 

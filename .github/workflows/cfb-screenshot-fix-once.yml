@@ -1,0 +1,38 @@
+name: Fix CFB screenshot asset once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/cfb-screenshot-fix-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix-cfb-example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Point CFB docs to working image and clean up
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("examples/CFB.md")
+          text = path.read_text(encoding="utf-8")
+          text = text.replace("images/CFB/cfb_rankings_card.png", "images/CFB/cfb_rankings_card.webp")
+          path.write_text(text, encoding="utf-8")
+          PY
+
+          rm -f examples/images/CFB/cfb_rankings_card.png
+          git rm .github/workflows/cfb-screenshot-fix-once.yml
+          git add examples/CFB.md examples/images/CFB
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Fix CFB rankings screenshot reference"
+          git push

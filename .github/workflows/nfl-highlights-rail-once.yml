@@ -1,17 +1,15 @@
 name: Clean up NFL docs once
 
 on:
-  issues:
-    types:
-      - opened
+  push:
+    paths:
+      - '.github/nfl-docs-trigger.txt'
 
 permissions:
   contents: write
-  issues: write
 
 jobs:
   update-nfl-docs:
-    if: github.event.issue.title == 'Run NFL docs cleanup'
     runs-on: ubuntu-latest
 
     steps:
@@ -28,32 +26,16 @@ jobs:
           path = Path('examples/NFL.md')
           text = path.read_text(encoding='utf-8')
 
-          # ------------------------------------------------------
-          # Layout table
-          # ------------------------------------------------------
           old_row = '| 3. NFL Game Highlights | Playable ESPN highlights with score and recap | `sensor.espn_nfl_scoreboard_raw` |'
           new_rows = '''| 3. Featured Game Highlight | One featured playable ESPN highlight with score and recap | `sensor.espn_nfl_scoreboard_raw` |
 | 4. NFL Highlights Rail | Featured highlight plus three playable videos and expandable extras | `sensor.espn_nfl_scoreboard_raw` |'''
-
           if old_row in text:
               text = text.replace(old_row, new_rows, 1)
           elif '| 4. NFL Highlights Rail |' not in text:
               raise SystemExit('Could not update NFL layout table')
 
-          # ------------------------------------------------------
-          # Section 3 name: keep the older single-video card, but
-          # make its purpose distinct from the new Highlights Rail.
-          # ------------------------------------------------------
-          text = text.replace(
-              '## 3. NFL Game Highlights',
-              '## 3. Featured Game Highlight',
-              1,
-          )
+          text = text.replace('## 3. NFL Game Highlights', '## 3. Featured Game Highlight', 1)
 
-          # ------------------------------------------------------
-          # Scrolling ticker: NFL should be the active default in
-          # NFL.md. Other leagues remain examples users can add.
-          # ------------------------------------------------------
           old_note = '''# IMPORTANT FOR THIS EXAMPLE:
 # The supplied configuration below currently has MLB as the active
 # entry under `sports:`. To display NFL as well, add this block:
@@ -64,12 +46,10 @@ jobs:
 #     accent: '#2563eb'
 #     enabled: true
 #     teams: null'''
-
           new_note = '''# IMPORTANT FOR THIS EXAMPLE:
 # NFL is enabled by default below. Add more league blocks under
 # `sports:` if you want one ticker to combine NFL with CFB, MLB,
 # NBA, WNBA, NHL, or other supported scoreboard sensors.'''
-
           if old_note in text:
               text = text.replace(old_note, new_note, 1)
 
@@ -92,7 +72,6 @@ jobs:
     #   accent: '#2563eb'
     #   enabled: true
     #   teams: null'''
-
           new_sports = '''    # NFL is the active default in this NFL example.
     - label: NFL
       entity: sensor.espn_nfl_scoreboard_raw
@@ -113,7 +92,6 @@ jobs:
     #   accent: '#ef4444'
     #   enabled: true
     #   teams: null'''
-
           if old_sports in text:
               text = text.replace(old_sports, new_sports, 1)
           elif '- label: NFL\n      entity: sensor.espn_nfl_scoreboard_raw\n      kind: football' not in text:
@@ -124,9 +102,6 @@ jobs:
           if stale_guidance in text:
               text = text.replace(stale_guidance, current_guidance, 1)
 
-          # ------------------------------------------------------
-          # Section 4 intro, screenshot, and notes
-          # ------------------------------------------------------
           if '## 4. League Highlights' in text:
               start = text.index('## 4. League Highlights')
           elif '## 4. NFL Highlights Rail' in text:
@@ -135,8 +110,6 @@ jobs:
               raise SystemExit('Could not find section 4')
 
           details = text.index('<details>', start)
-          end = text.index('## 🛠️ Troubleshooting', details)
-
           new_intro = '''## 4. NFL Highlights Rail
 
 A wide, TV-style multi-game highlights card built from `sensor.espn_nfl_scoreboard_raw`. It shows one featured playable ESPN highlight with the final score and team branding, keeps the next three highlights playable directly inside the card, and can expand additional videos with **View All Highlights**.
@@ -156,18 +129,11 @@ A wide, TV-style multi-game highlights card built from `sensor.espn_nfl_scoreboa
 > - This rail is intentionally limited to completed games so the **FINAL GAMES** subtitle matches the content.
 
 '''
-
           text = text[:start] + new_intro + text[details:]
 
-          # ------------------------------------------------------
-          # Keep FINAL GAMES semantically correct by filtering the
-          # Highlights Rail to completed games only. Limit the edit
-          # to section 4 so the older featured card is unchanged.
-          # ------------------------------------------------------
           start = text.index('## 4. NFL Highlights Rail')
           end = text.index('## 🛠️ Troubleshooting', start)
           section = text[start:end]
-
           marker = '''          const state =
             String(
               status?.type?.state ||
@@ -176,7 +142,6 @@ A wide, TV-style multi-game highlights card built from `sensor.espn_nfl_scoreboa
 
 
           const date ='''
-
           replacement = '''          const state =
             String(
               status?.type?.state ||
@@ -191,7 +156,6 @@ A wide, TV-style multi-game highlights card built from `sensor.espn_nfl_scoreboa
 
 
           const date ='''
-
           if marker in section and 'if (state !== "post")' not in section:
               section = section.replace(marker, replacement, 1)
               text = text[:start] + section + text[end:]
@@ -199,14 +163,9 @@ A wide, TV-style multi-game highlights card built from `sensor.espn_nfl_scoreboa
           path.write_text(text, encoding='utf-8')
           PY
 
-          git rm .github/workflows/nfl-highlights-rail-once.yml
+          git rm .github/workflows/nfl-highlights-rail-once.yml .github/nfl-docs-trigger.txt
           git add examples/NFL.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Clean up NFL examples documentation"
           git push
-
-      - name: Close trigger issue
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh issue close "${{ github.event.issue.number }}" --comment "NFL.md cleanup completed."

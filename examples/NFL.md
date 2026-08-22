@@ -3813,7 +3813,8 @@ To reproduce the multi-sport layout, add one instance of the reusable ticker for
 
 A playable NFL highlights card built from `sensor.espn_nfl_scoreboard_raw`. It automatically finds games with playable ESPN highlight videos, prefers completed games first, and can optionally prioritize the favorite team configured in Sports Ticker.
 
-<img src="images/NFL/nfl_game_highlights.jpg" alt="NFL Game Highlights card example" width="420">
+<img width="392"  alt="image" src="https://github.com/user-attachments/assets/44bc4b4e-5866-490e-a4df-73c7ade104b9" />
+
 
 > **New user notes**
 > - Requires the **Sports Ticker** integration, `custom:button-card`, and `card-mod`.

@@ -57,7 +57,7 @@ A glass-style ticker that can show NFL by itself or combine multiple enabled spo
 Finds playable ESPN highlights from the NFL scoreboard data and combines the video with the final score and recap information.
 
 <a href="examples/NFL.md#3-nfl-game-highlights">
-  <img src="examples/images/NFL/nfl_game_highlights.jpg" alt="NFL Game Highlights card" width="420">
+  <img src="https://github.com/user-attachments/assets/44bc4b4e-5866-490e-a4df-73c7ade104b9" alt="NFL Game Highlights card" width="420">
 </a>
 
 ➡️ **[Open the full NFL examples with copy/paste YAML](examples/NFL.md)**

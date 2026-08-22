@@ -4,7 +4,7 @@
 
 # 🏟️ Home Assistant Sports Ticker
 
-> A Home Assistant integration that pulls live sports data from ESPN scoreboards and exposes it as sensors for Lovelace tickers, scoreboards, game cards, and dashboards.
+> A Home Assistant integration that pulls live sports data from ESPN scoreboards and exposes it as sensors for Lovelace tickers, scoreboards, game cards, highlights, and dashboards.
 
 ---
 
@@ -27,8 +27,40 @@
   - GitHub release asset downloads provide the download metric HACS can use without adding installation telemetry
 
 - 🗺️ **Season-based sports roadmap**
-  - Added planned sport releases timed ahead of their seasons or major annual competitions
+  - Planned sport releases are targeted ahead of their seasons or major annual competitions
   - Future targets include College Basketball, Tennis, Rugby, Formula 1, AFL, Cricket, MotoGP, IndyCar, and more
+
+---
+
+## 🏈 NFL card showcase
+
+The NFL examples are being rebuilt around cards that are useful day-to-day. The current set includes a favorite-team next-game card, a multi-sport scrolling ticker, and a playable ESPN highlights card.
+
+### Favorite Team Next Game
+
+Automatically follows the NFL favorite configured in Sports Ticker and shows the next matchup, kickoff, venue, broadcast, week, and home/away status.
+
+<a href="examples/NFL.md#1-favorite-team-next-game">
+  <img src="examples/images/NFL/nfl_next_game_card.svg" alt="NFL Favorite Team Next Game card" width="360">
+</a>
+
+### Scrolling Sports Ticker
+
+A glass-style ticker that can show NFL by itself or combine multiple enabled sports in one continuous scrolling display.
+
+<a href="examples/NFL.md#2-scrolling-sports-ticker">
+  <img src="examples/images/NFL/nfl_multi_sport_ticker.gif" alt="NFL multi-sport scrolling ticker" width="100%">
+</a>
+
+### NFL Game Highlights
+
+Finds playable ESPN highlights from the NFL scoreboard data and combines the video with the final score and recap information.
+
+<a href="examples/NFL.md#3-nfl-game-highlights">
+  <img src="examples/images/NFL/nfl_game_highlights.jpg" alt="NFL Game Highlights card" width="420">
+</a>
+
+➡️ **[Open the full NFL examples with copy/paste YAML](examples/NFL.md)**
 
 ---
 
@@ -56,6 +88,7 @@
 | Installation | HACS and manual installation | [Jump](#-installation) |
 | Configuration | Leagues, favorites, ticker speed, and theme | [Jump](#️-configuration) |
 | Sensors | Entity names and available attributes | [Jump](#-entities--sensors) |
+| NFL showcase | Preview the newest NFL dashboard cards | [Jump](#-nfl-card-showcase) |
 | Examples | Ready-to-use Lovelace cards | [Jump](#-lovelace-examples) |
 | Planned sports | Season-based expansion roadmap | [Jump](#️-planned-sports-roadmap) |
 | Troubleshooting | Common setup and dashboard issues | [Jump](#️-troubleshooting) |
@@ -94,20 +127,37 @@
 
 New sports are targeted for releases **before their seasons or major annual competitions begin**, leaving time for testing, documentation, and dashboard examples. Version targets may move if ESPN data is not reliable enough for production support or if an official season calendar changes.
 
+### Version numbering going forward
+
+Starting with the next update, Sports Ticker will use:
+
+```text
+v0.<feature line>.<sub-update>
+```
+
+Examples:
+
+- `v0.20.1` — first follow-up update to the Football release line
+- `v0.20.2` — another Football fix/card/docs update
+- `v0.21.0` — next feature release line
+- `v0.21.1` — follow-up update to v0.21
+
+The currently published release remains **v0.0.20** so the existing GitHub/HACS history stays accurate. The **next release will begin the new structure at v0.20.1**.
+
 | Version | Target release | Sport / focus | Seasonal goal |
 | :--- | :--- | :--- | :--- |
-| **v0.0.20** | Aug–Sep 2026 | 🏈 NFL + College Football | Football-season foundation; improve existing football support before kickoff |
-| **v0.0.21** | Oct 2026 | 🏀 College Basketball | Land before the November college basketball season |
-| **v0.0.22** | Dec 2026 | 🎾 Tennis | Land before the January 2027 Australian Open; begin with ATP/WTA and major tournaments |
-| **v0.0.23** | Jan 2027 | 🏉 Rugby Union | Land before the 2027 Six Nations begins in early February |
-| **v0.0.24** | Early Feb 2027 | 🏉 Rugby League | Land before the 2027 NRL season begins in late February |
-| **v0.0.25** | Feb 2027* | 🏎️ Formula 1 | Land before the 2027 F1 season; establish the motorsport event model |
-| **v0.0.26** | Feb–Mar 2027* | 🦘 Australian Rules Football | Land before the 2027 AFL season |
-| **v0.0.27** | Mar 2027 | 🏏 Cricket | Target the major spring T20 / IPL window while building a year-round cricket model |
-| **v0.0.28** | Pre-season target | 🏍️ MotoGP | Reuse the motorsport architecture established for Formula 1 |
-| **v0.0.29** | Pre-season target | 🏎️ IndyCar | Add before a future IndyCar season begins |
-| **v0.0.30** | Jan 2028 | ⚾🥎 College Baseball + Softball | Land before the NCAA spring schedules begin |
-| **v0.0.31** | Pre-season target | 🏒 College Hockey | Land before an NCAA hockey season begins |
+| **v0.20.1** | Aug–Sep 2026 | 🏈 NFL + College Football | Football sub-update: cards, examples, CFB/NFL refinements, and season-ready fixes |
+| **v0.21.0** | Oct 2026 | 🏀 College Basketball | Land before the November college basketball season |
+| **v0.22.0** | Dec 2026 | 🎾 Tennis | Land before the January 2027 Australian Open; begin with ATP/WTA and major tournaments |
+| **v0.23.0** | Jan 2027 | 🏉 Rugby Union | Land before the 2027 Six Nations begins in early February |
+| **v0.24.0** | Early Feb 2027 | 🏉 Rugby League | Land before the 2027 NRL season begins in late February |
+| **v0.25.0** | Feb 2027* | 🏎️ Formula 1 | Land before the 2027 F1 season; establish the motorsport event model |
+| **v0.26.0** | Feb–Mar 2027* | 🦘 Australian Rules Football | Land before the 2027 AFL season |
+| **v0.27.0** | Mar 2027 | 🏏 Cricket | Target the major spring T20 / IPL window while building a year-round cricket model |
+| **v0.28.0** | Pre-season target | 🏍️ MotoGP | Reuse the motorsport architecture established for Formula 1 |
+| **v0.29.0** | Pre-season target | 🏎️ IndyCar | Add before a future IndyCar season begins |
+| **v0.30.0** | Jan 2028 | ⚾🥎 College Baseball + Softball | Land before the NCAA spring schedules begin |
+| **v0.31.0** | Pre-season target | 🏒 College Hockey | Land before an NCAA hockey season begins |
 
 \* Target month is provisional until the relevant official season calendar is published.
 
@@ -306,17 +356,17 @@ last_error: "Unexpected status 503"
 
 ## 🧩 Lovelace examples
 
-All example cards are now stored in the top-level [`examples`](examples/) folder.
+All example cards are stored in the top-level [`examples`](examples/) folder.
 
 | Example | Description |
 | :--- | :--- |
-| [`NFL.md`](examples/NFL.md) | NFL ticker, schedule, gamecast, featured matchup, and next-game entity examples |
+| [`NFL.md`](examples/NFL.md) | Favorite-team next game, multi-sport scrolling ticker, and playable NFL game highlights |
 | [`college_football_ticker_card.yaml`](examples/college_football_ticker_card.yaml) | Scrolling College Football ticker that uses the configured favorite team and ticker speed |
 | [`multi_league_ticker_card.yaml`](examples/multi_league_ticker_card.yaml) | Reusable ticker card template for supported leagues |
 | [`mlb_example_cards.md`](examples/mlb_example_cards.md) | MLB ticker, schedule, gamecast, standings, and stats layouts |
 | [`nba_example_cards.md`](examples/nba_example_cards.md) | NBA schedule, ticker, and dashboard card examples |
 
-The College Football ticker reads the integration options directly from the scoreboard sensor:
+The College Football ticker reads integration options directly from the scoreboard sensor:
 
 ```javascript
 const speed = Number(
@@ -327,7 +377,7 @@ const favorite =
   states['sensor.espn_cfb_scoreboard_raw']?.attributes?.favorite_team;
 ```
 
-This means changing the Sports Ticker options updates the card after the integration reloads. No separate `input_number` helper is required.
+This means changing Sports Ticker options updates the card after the integration reloads. No separate `input_number` helper is required.
 
 ---
 
@@ -349,11 +399,11 @@ Confirm the Lovelace card reads:
 entity.attributes.ticker_speed
 ```
 
-or the equivalent scoreboard entity state attribute. A hard-coded CSS value such as `36s` will ignore the integration setting, because CSS remains unmoved by good intentions.
+or the equivalent scoreboard entity state attribute. A hard-coded CSS value such as `36s` will ignore the integration setting.
 
 ### My sensor says cached
 
-ESPN was unavailable, timed out, or returned invalid data. Sports Ticker is intentionally keeping the last valid scoreboard instead of blanking the card.
+ESPN was unavailable, timed out, or returned invalid data. Sports Ticker intentionally keeps the last valid scoreboard instead of blanking the card.
 
 ### My favorite team does not show
 
@@ -378,7 +428,11 @@ Verify that:
 
 ## 📌 Version
 
-Current version: **v0.0.20**
+Current published version: **v0.0.20**
+
+Next sub-update: **v0.20.1**
+
+Going forward, feature lines use `v0.<feature>.0` and follow-up fixes/improvements increment the final number, for example `v0.20.1`, `v0.20.2`, then `v0.21.0`.
 
 ---
 

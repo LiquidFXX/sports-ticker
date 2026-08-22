@@ -1,5 +1,6 @@
 <!-- support_badges_start -->
 [![PayPal](https://img.shields.io/badge/PayPal-Support%20Me-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/KevinHughesPhoto)
+[![Total Downloads](https://img.shields.io/github/downloads/LiquidFXX/sports-ticker/total?label=Total%20Downloads)](https://github.com/LiquidFXX/sports-ticker/releases)
 <!-- support_badges_end -->
 
 # 🏟️ Home Assistant Sports Ticker

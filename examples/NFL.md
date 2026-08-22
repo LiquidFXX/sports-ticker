@@ -5541,6 +5541,2693 @@ card_mod:
 
 </details>
 
+## 4. League Highlights
+
+A featured next-game card that automatically follows the NFL favorite selected in Sports Ticker. It shows the favorite team, opponent, kickoff date and time, venue, broadcast, week, and whether the game is home or away.
+
+<img width="451"  alt="image" src="https://github.com/user-attachments/assets/173bf784-d5a8-4d1b-83ee-bcc547040360" />
+
+
+> No team abbreviation needs to be hard-coded. The card reads the configured favorite directly from `sensor.espn_nfl_next_game`.
+
+<details>
+<summary>Copy YAML</summary>
+
+```yaml
+type: custom:button-card
+entity: sensor.espn_nfl_scoreboard_raw
+
+show_name: false
+show_icon: false
+show_state: false
+
+tap_action:
+  action: none
+
+hold_action:
+  action: none
+
+triggers_update: all
+
+grid_options:
+  columns: 20
+  rows: auto
+
+variables:
+  src: sensor.espn_nfl_scoreboard_raw
+
+  title: GAME HIGHLIGHTS
+  subtitle: FINAL GAMES
+
+  # 1 featured + 3 small cards
+  preview_items: 4
+
+  # Total highlights that View All can expose
+  max_items: 16
+
+  prefer_favorite_game: false
+
+
+styles:
+  card:
+    - padding: 0
+    - border-radius: 22px
+    - overflow: hidden
+    - background: rgba(8,14,24,0.97)
+    - border: 1px solid rgba(255,255,255,0.14)
+    - box-shadow: 0 18px 42px rgba(0,0,0,0.28)
+    - container-type: inline-size
+
+  grid:
+    - grid-template-areas: '"content"'
+    - grid-template-columns: 1fr
+    - grid-template-rows: auto
+
+  custom_fields:
+    content:
+      - width: 100%
+      - min-width: 0
+      - pointer-events: auto
+
+
+custom_fields:
+  content: |
+    [[[
+      const st =
+        states[variables.src];
+
+
+      /*
+       * ========================================================
+       * HELPERS
+       * ========================================================
+       */
+
+      const esc = value =>
+        String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+
+
+      const truthy = value =>
+        !(
+          value === false ||
+          String(value).toLowerCase() === "false"
+        );
+
+
+      const getLogo = team =>
+        team?.logo ||
+        team?.logos?.[0]?.href ||
+        team?.logos?.[0]?.url ||
+        "";
+
+
+      const getColor = team => {
+
+        const color =
+          String(
+            team?.color || ""
+          )
+            .replace("#", "")
+            .trim();
+
+
+        return (
+          /^[0-9A-Fa-f]{6}$/.test(color)
+            ? `#${color}`
+            : "#334155"
+        );
+      };
+
+
+      const getTeams = comp =>
+        Array.isArray(
+          comp?.competitors
+        )
+          ? comp.competitors
+          : [];
+
+
+      const getAway = comp =>
+        getTeams(comp)
+          .find(
+            x =>
+              x?.homeAway === "away"
+          ) || {};
+
+
+      const getHome = comp =>
+        getTeams(comp)
+          .find(
+            x =>
+              x?.homeAway === "home"
+          ) || {};
+
+
+      const abbr = competitor =>
+        competitor?.team?.abbreviation ||
+        competitor?.team?.shortDisplayName ||
+        "TEAM";
+
+
+      const formatDuration = raw => {
+
+        const total =
+          Number(raw || 0);
+
+
+        if (
+          !Number.isFinite(total) ||
+          total <= 0
+        ) {
+          return "";
+        }
+
+
+        const minutes =
+          Math.floor(total / 60);
+
+
+        const seconds =
+          Math.floor(total % 60);
+
+
+        return (
+          `${minutes}:` +
+          String(seconds)
+            .padStart(2, "0")
+        );
+      };
+
+
+      /*
+       * ========================================================
+       * HEADLINES
+       * ========================================================
+       */
+
+      const headlineObjects = (
+        event,
+        comp
+      ) => [
+
+        ...(
+          Array.isArray(
+            comp?.headlines
+          )
+            ? comp.headlines
+            : []
+        ),
+
+        ...(
+          Array.isArray(
+            event?.headlines
+          )
+            ? event.headlines
+            : []
+        )
+
+      ];
+
+
+      /*
+       * ========================================================
+       * VIDEOS
+       * ========================================================
+       */
+
+      const getVideos = (
+        event,
+        comp
+      ) => {
+
+        const videos = [];
+
+
+        if (
+          Array.isArray(
+            comp?.highlights
+          )
+        ) {
+          videos.push(
+            ...comp.highlights
+          );
+        }
+
+
+        if (
+          Array.isArray(
+            event?.highlights
+          )
+        ) {
+          videos.push(
+            ...event.highlights
+          );
+        }
+
+
+        headlineObjects(
+          event,
+          comp
+        ).forEach(
+          headline => {
+
+            if (
+              Array.isArray(
+                headline?.video
+              )
+            ) {
+              videos.push(
+                ...headline.video
+              );
+            }
+
+          }
+        );
+
+
+        const seen =
+          new Set();
+
+
+        return videos.filter(
+          video => {
+
+            const key =
+              String(
+                video?.id ||
+                video?.headline ||
+                video?.thumbnail ||
+                ""
+              );
+
+
+            if (!key)
+              return false;
+
+
+            if (seen.has(key))
+              return false;
+
+
+            seen.add(key);
+
+            return true;
+          }
+        );
+      };
+
+
+      /*
+       * ========================================================
+       * VIDEO LINKS
+       * ========================================================
+       */
+
+      const directVideo = video => {
+
+        const links =
+          video?.links || {};
+
+
+        return (
+          links?.source?.HD?.href ||
+          links?.source?.href ||
+          links?.source?.mezzanine?.href ||
+          links?.HD?.href ||
+          links?.mezzanine?.href ||
+          ""
+        );
+      };
+
+
+      const webVideo = video =>
+        video?.links?.web?.href ||
+        video?.links?.self?.href ||
+        "";
+
+
+      /*
+       * ========================================================
+       * EMPTY
+       * ========================================================
+       */
+
+      if (!st) {
+
+        return `
+          <div class="hr-empty">
+
+            <div class="hr-empty-title">
+              GAME HIGHLIGHTS
+            </div>
+
+            <div class="hr-empty-sub">
+              Scoreboard unavailable
+            </div>
+
+          </div>
+        `;
+      }
+
+
+      const attrs =
+        st.attributes || {};
+
+
+      const events =
+        Array.isArray(
+          attrs.events
+        )
+          ? attrs.events
+          : [];
+
+
+      const favorite =
+        String(
+          attrs.favorite_team || ""
+        )
+          .trim()
+          .toUpperCase();
+
+
+      const preferFavorite =
+        truthy(
+          variables.prefer_favorite_game
+        );
+
+
+      const previewItems =
+        Math.max(
+          1,
+          Math.min(
+            4,
+            Number(
+              variables.preview_items || 4
+            )
+          )
+        );
+
+
+      const maxItems =
+        Math.max(
+          previewItems,
+          Math.min(
+            24,
+            Number(
+              variables.max_items || 16
+            )
+          )
+        );
+
+
+      /*
+       * ========================================================
+       * BUILD ITEMS
+       * ========================================================
+       */
+
+      const items = [];
+
+
+      events.forEach(
+        event => {
+
+          const comp =
+            event?.competitions?.[0] ||
+            {};
+
+
+          const away =
+            getAway(comp);
+
+
+          const home =
+            getHome(comp);
+
+
+          const awayAbbr =
+            abbr(away);
+
+
+          const homeAbbr =
+            abbr(home);
+
+
+          const status =
+            comp?.status ||
+            event?.status ||
+            {};
+
+
+          const state =
+            String(
+              status?.type?.state ||
+              ""
+            ).toLowerCase();
+
+
+          const date =
+            comp?.date ||
+            event?.date ||
+            "";
+
+
+          const isFavorite =
+            !!favorite &&
+            (
+              String(
+                awayAbbr
+              ).toUpperCase() ===
+              favorite ||
+
+              String(
+                homeAbbr
+              ).toUpperCase() ===
+              favorite
+            );
+
+
+          const headlines =
+            headlineObjects(
+              event,
+              comp
+            );
+
+
+          const recap =
+            headlines.find(
+              headline =>
+                String(
+                  headline?.type || ""
+                ).toLowerCase() ===
+                "recap"
+            ) ||
+            headlines[0] ||
+            {};
+
+
+          getVideos(
+            event,
+            comp
+          ).forEach(
+            video => {
+
+              const direct =
+                directVideo(video);
+
+
+              if (!direct)
+                return;
+
+
+              items.push({
+
+                direct,
+
+                web:
+                  webVideo(video),
+
+                thumbnail:
+                  video?.thumbnail ||
+                  "",
+
+                duration:
+                  formatDuration(
+                    video?.duration
+                  ),
+
+                title:
+                  video?.headline ||
+                  video?.description ||
+                  recap?.shortLinkText ||
+                  `${awayAbbr} vs. ${homeAbbr}: Game Highlights`,
+
+                away,
+
+                home,
+
+                awayAbbr,
+
+                homeAbbr,
+
+                awayLogo:
+                  getLogo(
+                    away?.team
+                  ),
+
+                homeLogo:
+                  getLogo(
+                    home?.team
+                  ),
+
+                awayColor:
+                  getColor(
+                    away?.team
+                  ),
+
+                homeColor:
+                  getColor(
+                    home?.team
+                  ),
+
+                state,
+
+                date,
+
+                favorite:
+                  isFavorite
+
+              });
+
+            }
+          );
+
+        }
+      );
+
+
+      /*
+       * ========================================================
+       * SORT
+       * ========================================================
+       */
+
+      items.sort(
+        (a, b) => {
+
+          if (
+            preferFavorite &&
+            a.favorite !== b.favorite
+          ) {
+
+            return a.favorite
+              ? -1
+              : 1;
+
+          }
+
+
+          const aState =
+            a.state === "post"
+              ? 0
+              : 1;
+
+
+          const bState =
+            b.state === "post"
+              ? 0
+              : 1;
+
+
+          if (
+            aState !== bState
+          ) {
+            return (
+              aState -
+              bState
+            );
+          }
+
+
+          return (
+            new Date(
+              b.date || 0
+            ) -
+            new Date(
+              a.date || 0
+            )
+          );
+        }
+      );
+
+
+      const selected =
+        items.slice(
+          0,
+          maxItems
+        );
+
+
+      if (!selected.length) {
+
+        return `
+          <div class="hr-empty">
+
+            <div class="hr-empty-title">
+              GAME HIGHLIGHTS
+            </div>
+
+            <div class="hr-empty-sub">
+              No playable highlights available
+            </div>
+
+          </div>
+        `;
+      }
+
+
+      const hero =
+        selected[0];
+
+
+      /*
+       * 3 cards shown below featured.
+       */
+
+      const rail =
+        selected.slice(
+          1,
+          previewItems
+        );
+
+
+      /*
+       * Everything beyond the first 4.
+       */
+
+      const extra =
+        selected.slice(
+          previewItems
+        );
+
+
+      /*
+       * ========================================================
+       * LOGO
+       * ========================================================
+       */
+
+      const logo = (
+        url,
+        abbreviation
+      ) => {
+
+        if (!url) {
+
+          return `
+            <span class="hr-logo-fallback">
+              ${esc(abbreviation)}
+            </span>
+          `;
+        }
+
+
+        return `
+          <img
+            class="hr-logo"
+            src="${esc(url)}"
+            alt="${esc(abbreviation)}"
+          >
+        `;
+      };
+
+
+      /*
+       * ========================================================
+       * SMALL PLAYABLE HIGHLIGHT
+       * ========================================================
+       */
+
+      const renderRail = item => {
+
+        return `
+          <div class="hr-rail-card">
+
+
+            <!-- VIDEO -->
+
+            <div class="hr-rail-media">
+
+
+              <video
+                class="hr-rail-video"
+                playsinline
+                preload="metadata"
+                ${
+                  item.thumbnail
+                    ? `poster="${esc(item.thumbnail)}"`
+                    : ""
+                }
+              >
+
+                <source
+                  src="${esc(item.direct)}"
+                  type="video/mp4"
+                >
+
+              </video>
+
+
+              <div class="hr-rail-shade">
+              </div>
+
+
+              <button
+                type="button"
+                class="hr-play hr-play-small"
+                onclick="
+                  event.preventDefault();
+                  event.stopPropagation();
+
+                  const media =
+                    this.closest(
+                      '.hr-rail-media'
+                    );
+
+                  const video =
+                    media.querySelector(
+                      '.hr-rail-video'
+                    );
+
+                  const duration =
+                    media.querySelector(
+                      '.hr-small-duration'
+                    );
+
+                  const shade =
+                    media.querySelector(
+                      '.hr-rail-shade'
+                    );
+
+                  const shell =
+                    media.closest(
+                      '.hr-shell'
+                    );
+
+
+                  shell
+                    .querySelectorAll('video')
+                    .forEach(
+                      other => {
+
+                        if (
+                          other !== video
+                        ) {
+                          other.pause();
+                        }
+
+                      }
+                    );
+
+
+                  video.controls =
+                    true;
+
+                  video.play();
+
+
+                  this.style.display =
+                    'none';
+
+
+                  if (duration) {
+                    duration.style.display =
+                      'none';
+                  }
+
+
+                  if (shade) {
+                    shade.style.display =
+                      'none';
+                  }
+
+
+                  video.onended =
+                    () => {
+
+                      video.controls =
+                        false;
+
+                      video.currentTime =
+                        0;
+
+                      this.style.display =
+                        'flex';
+
+
+                      if (duration) {
+                        duration.style.display =
+                          'block';
+                      }
+
+
+                      if (shade) {
+                        shade.style.display =
+                          'block';
+                      }
+
+                    };
+                "
+              >
+                ▶
+              </button>
+
+
+              ${
+                item.duration
+                  ? `
+                    <div class="hr-duration hr-small-duration">
+                      ${esc(item.duration)}
+                    </div>
+                  `
+                  : ""
+              }
+
+
+            </div>
+
+
+            <!-- DETAILS -->
+
+            <div class="hr-rail-details">
+
+
+              <div class="hr-red-bar">
+              </div>
+
+
+              <div class="hr-rail-matchup">
+
+
+                <div class="hr-mini-team hr-mini-away">
+
+                  ${logo(
+                    item.awayLogo,
+                    item.awayAbbr
+                  )}
+
+                  <strong>
+                    ${esc(
+                      item.awayAbbr
+                    )}
+                  </strong>
+
+                </div>
+
+
+                <div class="hr-vs">
+                  VS
+                </div>
+
+
+                <div class="hr-mini-team hr-mini-home">
+
+                  ${logo(
+                    item.homeLogo,
+                    item.homeAbbr
+                  )}
+
+                  <strong>
+                    ${esc(
+                      item.homeAbbr
+                    )}
+                  </strong>
+
+                </div>
+
+
+              </div>
+
+
+              <div class="hr-rail-footer">
+
+                <span class="hr-red-dot">
+                </span>
+
+
+                <span class="hr-game-label">
+                  GAME HIGHLIGHTS
+                </span>
+
+
+                ${
+                  item.web
+                    ? `
+                      <a
+                        class="hr-espn-link"
+                        href="${esc(item.web)}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onclick="
+                          event.stopPropagation();
+                        "
+                      >
+                        ESPN ↗
+                      </a>
+                    `
+                    : ""
+                }
+
+
+              </div>
+
+
+            </div>
+
+
+          </div>
+        `;
+      };
+
+
+      /*
+       * ========================================================
+       * OUTPUT
+       * ========================================================
+       */
+
+      return `
+        <div class="hr-shell">
+
+
+          <!-- HEADER -->
+
+          <div class="hr-header">
+
+
+            <div class="hr-header-left">
+
+
+              <div class="hr-header-icon">
+
+                <ha-icon
+                  class="hr-header-ha-icon"
+                  icon="mdi:movie-open-play-outline"
+                >
+                </ha-icon>
+
+              </div>
+
+
+              <div class="hr-header-text">
+
+                <div class="hr-title">
+                  ${esc(
+                    variables.title ||
+                    "GAME HIGHLIGHTS"
+                  )}
+                </div>
+
+                <div class="hr-subtitle">
+                  ${esc(
+                    variables.subtitle ||
+                    "FINAL GAMES"
+                  )}
+                </div>
+
+              </div>
+
+
+            </div>
+
+
+            <div class="hr-highlight-badge">
+
+              <span class="hr-red-dot">
+              </span>
+
+              HIGHLIGHTS
+
+            </div>
+
+
+          </div>
+
+
+          <!-- FEATURED -->
+
+          <div class="hr-featured">
+
+
+            <!-- FEATURED VIDEO -->
+
+            <div class="hr-featured-media">
+
+
+              <video
+                class="hr-video"
+                playsinline
+                preload="metadata"
+                ${
+                  hero.thumbnail
+                    ? `poster="${esc(hero.thumbnail)}"`
+                    : ""
+                }
+              >
+
+                <source
+                  src="${esc(hero.direct)}"
+                  type="video/mp4"
+                >
+
+              </video>
+
+
+              <button
+                type="button"
+                class="hr-play hr-play-main"
+                onclick="
+                  event.preventDefault();
+                  event.stopPropagation();
+
+                  const media =
+                    this.closest(
+                      '.hr-featured-media'
+                    );
+
+                  const video =
+                    media.querySelector(
+                      '.hr-video'
+                    );
+
+                  const duration =
+                    media.querySelector(
+                      '.hr-duration'
+                    );
+
+                  const shell =
+                    media.closest(
+                      '.hr-shell'
+                    );
+
+
+                  shell
+                    .querySelectorAll('video')
+                    .forEach(
+                      other => {
+
+                        if (
+                          other !== video
+                        ) {
+                          other.pause();
+                        }
+
+                      }
+                    );
+
+
+                  video.controls =
+                    true;
+
+                  video.play();
+
+                  this.style.display =
+                    'none';
+
+
+                  if (duration) {
+                    duration.style.display =
+                      'none';
+                  }
+
+
+                  video.onended =
+                    () => {
+
+                      video.controls =
+                        false;
+
+                      video.currentTime =
+                        0;
+
+                      this.style.display =
+                        'flex';
+
+
+                      if (duration) {
+                        duration.style.display =
+                          'block';
+                      }
+
+                    };
+                "
+              >
+                ▶
+              </button>
+
+
+              ${
+                hero.duration
+                  ? `
+                    <div class="hr-duration">
+                      ${esc(hero.duration)}
+                    </div>
+                  `
+                  : ""
+              }
+
+
+            </div>
+
+
+            <!-- FEATURED INFO -->
+
+            <div class="hr-featured-info">
+
+
+              <div class="hr-featured-title">
+                ${esc(hero.title)}
+              </div>
+
+
+              <div class="hr-score-row">
+
+
+                <div
+                  class="hr-team-chip hr-team-away"
+                  style="
+                    --team-color:
+                    ${esc(hero.awayColor)};
+                  "
+                >
+
+                  ${logo(
+                    hero.awayLogo,
+                    hero.awayAbbr
+                  )}
+
+                  <span>
+                    ${esc(
+                      hero.awayAbbr
+                    )}
+                  </span>
+
+                </div>
+
+
+                <strong class="hr-score">
+                  ${esc(
+                    hero.away?.score ??
+                    "—"
+                  )}
+                </strong>
+
+
+                <div class="hr-score-divider">
+                </div>
+
+
+                <strong class="hr-score">
+                  ${esc(
+                    hero.home?.score ??
+                    "—"
+                  )}
+                </strong>
+
+
+                <div
+                  class="hr-team-chip hr-team-home"
+                  style="
+                    --team-color:
+                    ${esc(hero.homeColor)};
+                  "
+                >
+
+                  <span>
+                    ${esc(
+                      hero.homeAbbr
+                    )}
+                  </span>
+
+                  ${logo(
+                    hero.homeLogo,
+                    hero.homeAbbr
+                  )}
+
+                </div>
+
+
+              </div>
+
+
+              <div class="hr-final">
+
+                ${
+                  hero.state === "post"
+                    ? "FINAL"
+                    : "HIGHLIGHT"
+                }
+
+              </div>
+
+
+              ${
+                hero.web
+                  ? `
+                    <a
+                      class="hr-featured-espn"
+                      href="${esc(hero.web)}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      ESPN ↗
+                    </a>
+                  `
+                  : ""
+              }
+
+
+            </div>
+
+
+          </div>
+
+
+          <!-- FIRST THREE -->
+
+          ${
+            rail.length
+              ? `
+                <div class="hr-rail">
+
+                  ${
+                    rail
+                      .map(
+                        renderRail
+                      )
+                      .join("")
+                  }
+
+                </div>
+              `
+              : ""
+          }
+
+
+          <!-- VIEW ALL -->
+
+          ${
+            extra.length
+              ? `
+                <button
+                  type="button"
+                  class="hr-view-all"
+                  onclick="
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const shell =
+                      this.closest(
+                        '.hr-shell'
+                      );
+
+                    const panel =
+                      shell.querySelector(
+                        '.hr-all-highlights'
+                      );
+
+                    const label =
+                      this.querySelector(
+                        '.hr-view-label'
+                      );
+
+                    const arrow =
+                      this.querySelector(
+                        '.hr-view-arrow'
+                      );
+
+                    const isOpen =
+                      panel.getAttribute(
+                        'data-open'
+                      ) ===
+                      'true';
+
+
+                    if (isOpen) {
+
+                      panel.style.display =
+                        'none';
+
+                      panel.setAttribute(
+                        'data-open',
+                        'false'
+                      );
+
+                      label.textContent =
+                        'VIEW ALL HIGHLIGHTS';
+
+                      arrow.style.transform =
+                        'rotate(0deg)';
+
+
+                      panel
+                        .querySelectorAll('video')
+                        .forEach(
+                          video => {
+                            video.pause();
+                          }
+                        );
+
+                    } else {
+
+                      panel.style.display =
+                        'grid';
+
+                      panel.setAttribute(
+                        'data-open',
+                        'true'
+                      );
+
+                      label.textContent =
+                        'HIDE EXTRA HIGHLIGHTS';
+
+                      arrow.style.transform =
+                        'rotate(180deg)';
+
+                    }
+                  "
+                >
+
+                  <ha-icon
+                    class="hr-list-icon"
+                    icon="mdi:format-list-bulleted"
+                  >
+                  </ha-icon>
+
+
+                  <span class="hr-view-label">
+                    VIEW ALL HIGHLIGHTS
+                  </span>
+
+
+                  <span class="hr-view-arrow">
+                    ▾
+                  </span>
+
+
+                </button>
+
+
+                <div
+                  class="hr-all-highlights"
+                  data-open="false"
+                >
+
+                  ${
+                    extra
+                      .map(
+                        renderRail
+                      )
+                      .join("")
+                  }
+
+                </div>
+              `
+              : ""
+          }
+
+
+        </div>
+      `;
+    ]]]
+
+
+card_mod:
+  style: |
+
+    /*
+     * ==========================================================
+     * SHELL
+     * ==========================================================
+     */
+
+    .hr-shell {
+      position: relative;
+
+      width: 100%;
+      min-width: 0;
+
+      padding:
+        22px 24px 18px;
+
+      box-sizing: border-box;
+
+      overflow: hidden;
+
+      color: white;
+
+      background:
+
+        radial-gradient(
+          circle at 100% 0%,
+          rgba(63,111,181,.09),
+          transparent 32%
+        ),
+
+        radial-gradient(
+          circle at 0% 100%,
+          rgba(205,38,58,.07),
+          transparent 30%
+        ),
+
+        linear-gradient(
+          145deg,
+          rgba(20,27,39,.99),
+          rgba(7,13,22,.99)
+        );
+    }
+
+
+    .hr-shell::before {
+      content: "";
+
+      position: absolute;
+
+      inset: 0;
+
+      pointer-events: none;
+
+      background:
+        linear-gradient(
+          115deg,
+          rgba(255,255,255,.035),
+          transparent 24%,
+          transparent 76%,
+          rgba(255,255,255,.015)
+        );
+    }
+
+
+
+    /*
+     * ==========================================================
+     * HEADER
+     * ==========================================================
+     */
+
+    .hr-header {
+      position: relative;
+
+      z-index: 2;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: space-between;
+
+      gap: 20px;
+
+      margin-bottom: 18px;
+    }
+
+
+    .hr-header-left {
+      min-width: 0;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 14px;
+    }
+
+
+    .hr-header-icon {
+      width: 44px;
+      height: 44px;
+
+      flex: 0 0 auto;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      border-radius: 11px;
+
+      color: #ff334b;
+
+      background:
+        rgba(255,45,68,.055);
+
+      border:
+        1px solid
+        rgba(255,55,75,.27);
+
+      box-shadow:
+        0 0 17px
+        rgba(255,45,65,.08);
+    }
+
+
+    .hr-header-ha-icon {
+      --mdc-icon-size: 25px;
+
+      color: #ff334b;
+    }
+
+
+    .hr-header-text {
+      min-width: 0;
+
+      text-align: left;
+    }
+
+
+    .hr-title {
+      color: white;
+
+      font-size:
+        clamp(
+          19px,
+          2.25cqw,
+          26px
+        );
+
+      font-weight: 950;
+
+      line-height: 1;
+
+      letter-spacing: 1.5px;
+
+      white-space: nowrap;
+    }
+
+
+    .hr-subtitle {
+      margin-top: 6px;
+
+      color:
+        rgba(210,220,235,.58);
+
+      font-size: 9px;
+
+      font-weight: 850;
+
+      line-height: 1;
+
+      letter-spacing: 1.8px;
+    }
+
+
+    .hr-highlight-badge {
+      flex: 0 0 auto;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 8px;
+
+      padding:
+        9px 16px;
+
+      border-radius:
+        999px;
+
+      color: #ff4a5e;
+
+      background:
+        rgba(255,50,70,.035);
+
+      border:
+        1px solid
+        rgba(255,65,85,.18);
+
+      font-size: 9px;
+
+      font-weight: 950;
+
+      letter-spacing: 1.25px;
+    }
+
+
+    .hr-red-dot {
+      width: 7px;
+      height: 7px;
+
+      flex: 0 0 auto;
+
+      border-radius: 50%;
+
+      background: #ff344b;
+
+      box-shadow:
+        0 0 9px
+        rgba(255,52,75,.70);
+    }
+
+
+
+    /*
+     * ==========================================================
+     * FEATURED
+     * ==========================================================
+     */
+
+    .hr-featured {
+      position: relative;
+
+      z-index: 2;
+
+      width: 100%;
+      min-width: 0;
+
+      display: grid;
+
+      grid-template-columns:
+        minmax(0,55%)
+        minmax(0,45%);
+
+      overflow: hidden;
+
+      border-radius: 14px;
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(20,29,42,.88),
+          rgba(8,14,23,.96)
+        );
+
+      border:
+        1px solid
+        rgba(255,255,255,.10);
+
+      box-shadow:
+
+        inset
+        0 1px 0
+        rgba(255,255,255,.025),
+
+        0 5px 18px
+        rgba(0,0,0,.12);
+    }
+
+
+
+    /*
+     * ==========================================================
+     * FEATURED VIDEO
+     * ==========================================================
+     */
+
+    .hr-featured-media {
+      position: relative;
+
+      width: 100%;
+      min-width: 0;
+
+      aspect-ratio:
+        16 / 9;
+
+      overflow: hidden;
+
+      background: #000;
+    }
+
+
+    .hr-video {
+      position: absolute;
+
+      inset: 0;
+
+      width: 100%;
+      height: 100%;
+
+      display: block;
+
+      object-fit: cover;
+
+      background: #000;
+
+      pointer-events: auto;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * PLAY BUTTONS
+     * ==========================================================
+     */
+
+    .hr-play {
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      box-sizing: border-box;
+
+      border-radius: 50%;
+
+      color: white;
+
+      background:
+        rgba(7,11,18,.78);
+
+      border:
+        1px solid
+        rgba(255,255,255,.34);
+
+      box-shadow:
+        0 7px 22px
+        rgba(0,0,0,.38);
+
+      backdrop-filter:
+        blur(10px);
+
+      -webkit-backdrop-filter:
+        blur(10px);
+
+      cursor: pointer;
+    }
+
+
+    .hr-play-main {
+      position: absolute;
+
+      z-index: 8;
+
+      top: 50%;
+      left: 50%;
+
+      width: 68px;
+      height: 68px;
+
+      transform:
+        translate(
+          -50%,
+          -50%
+        );
+
+      padding-left: 5px;
+
+      font-size: 24px;
+    }
+
+
+    .hr-play-main:hover {
+      transform:
+        translate(
+          -50%,
+          -50%
+        )
+        scale(1.05);
+
+      background:
+        rgba(15,20,30,.88);
+    }
+
+
+
+    /*
+     * ==========================================================
+     * DURATION
+     * ==========================================================
+     */
+
+    .hr-duration {
+      position: absolute;
+
+      z-index: 7;
+
+      left: 12px;
+      bottom: 10px;
+
+      padding:
+        5px 8px;
+
+      border-radius: 8px;
+
+      color: white;
+
+      background:
+        rgba(4,7,12,.82);
+
+      border:
+        1px solid
+        rgba(255,255,255,.15);
+
+      font-size: 11px;
+
+      font-weight: 950;
+
+      font-variant-numeric:
+        tabular-nums;
+
+      pointer-events: none;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * FEATURED INFO
+     * ==========================================================
+     */
+
+    .hr-featured-info {
+      min-width: 0;
+
+      display: flex;
+
+      flex-direction: column;
+
+      align-items: center;
+
+      justify-content: center;
+
+      padding:
+        clamp(
+          16px,
+          2.4cqw,
+          28px
+        );
+
+      box-sizing: border-box;
+
+      overflow: hidden;
+    }
+
+
+    .hr-featured-title {
+      width: 100%;
+      min-width: 0;
+
+      display: -webkit-box;
+
+      overflow: hidden;
+
+      color: white;
+
+      font-size:
+        clamp(
+          17px,
+          2.1cqw,
+          25px
+        );
+
+      font-weight: 950;
+
+      line-height: 1.16;
+
+      letter-spacing: -.25px;
+
+      text-align: left;
+
+      white-space: normal;
+
+      overflow-wrap: break-word;
+
+      -webkit-line-clamp: 3;
+
+      -webkit-box-orient:
+        vertical;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * SCORE
+     * ==========================================================
+     */
+
+    .hr-score-row {
+      width: 100%;
+      min-width: 0;
+
+      display: grid;
+
+      grid-template-columns:
+        minmax(0,1fr)
+        auto
+        1px
+        auto
+        minmax(0,1fr);
+
+      align-items: center;
+
+      gap:
+        clamp(
+          5px,
+          .8cqw,
+          10px
+        );
+
+      margin-top:
+        clamp(
+          15px,
+          2cqw,
+          24px
+        );
+    }
+
+
+    .hr-team-chip {
+      min-width: 0;
+      max-width: 100%;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 6px;
+
+      padding:
+        6px 8px;
+
+      box-sizing: border-box;
+
+      overflow: hidden;
+
+      border-radius: 10px;
+
+      color: white;
+
+      background:
+        color-mix(
+          in srgb,
+          var(--team-color) 42%,
+          rgba(10,17,27,.96)
+        );
+
+      border:
+        1px solid
+        color-mix(
+          in srgb,
+          var(--team-color) 58%,
+          rgba(255,255,255,.10)
+        );
+
+      box-shadow:
+        inset
+        0 1px 0
+        rgba(255,255,255,.07);
+    }
+
+
+    .hr-team-away {
+      justify-content: flex-start;
+    }
+
+
+    .hr-team-home {
+      justify-content: flex-end;
+    }
+
+
+    .hr-team-chip span {
+      min-width: 0;
+
+      overflow: hidden;
+
+      color: white;
+
+      font-size:
+        clamp(
+          9px,
+          1.05cqw,
+          12px
+        );
+
+      font-weight: 950;
+
+      text-overflow: ellipsis;
+
+      white-space: nowrap;
+    }
+
+
+    .hr-team-chip .hr-logo {
+      width:
+        clamp(
+          23px,
+          2.45cqw,
+          30px
+        );
+
+      height:
+        clamp(
+          23px,
+          2.45cqw,
+          30px
+        );
+    }
+
+
+    .hr-score {
+      color: white;
+
+      font-size:
+        clamp(
+          22px,
+          2.55cqw,
+          32px
+        );
+
+      font-weight: 950;
+
+      line-height: 1;
+
+      font-variant-numeric:
+        tabular-nums;
+    }
+
+
+    .hr-score-divider {
+      width: 1px;
+
+      height:
+        clamp(
+          30px,
+          3.5cqw,
+          38px
+        );
+
+      background:
+        rgba(255,255,255,.18);
+    }
+
+
+    .hr-final {
+      margin-top: 10px;
+
+      color:
+        rgba(220,228,240,.50);
+
+      font-size: 10px;
+
+      font-weight: 900;
+
+      letter-spacing: 1.5px;
+    }
+
+
+    .hr-featured-espn {
+      margin-top: 10px;
+
+      padding:
+        5px 8px;
+
+      border-radius: 8px;
+
+      color:
+        rgba(225,232,243,.72);
+
+      background:
+        rgba(255,255,255,.035);
+
+      border:
+        1px solid
+        rgba(255,255,255,.09);
+
+      text-decoration: none;
+
+      font-size: 7px;
+
+      font-weight: 900;
+
+      letter-spacing: .5px;
+
+      pointer-events: auto;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * LOGOS
+     * ==========================================================
+     */
+
+    .hr-logo {
+      width: 29px;
+      height: 29px;
+
+      flex: 0 0 auto;
+
+      object-fit: contain;
+
+      filter:
+        drop-shadow(
+          0 2px 3px
+          rgba(0,0,0,.25)
+        );
+    }
+
+
+    .hr-logo-fallback {
+      color: white;
+
+      font-size: 8px;
+
+      font-weight: 950;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * FIRST THREE
+     * ==========================================================
+     */
+
+    .hr-rail {
+      position: relative;
+
+      z-index: 2;
+
+      width: 100%;
+
+      display: grid;
+
+      grid-template-columns:
+        repeat(
+          3,
+          minmax(0,1fr)
+        );
+
+      gap: 10px;
+
+      margin-top: 10px;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * EXPANDED HIGHLIGHTS
+     * ==========================================================
+     */
+
+    .hr-all-highlights {
+      position: relative;
+
+      z-index: 2;
+
+      display: none;
+
+      width: 100%;
+
+      grid-template-columns:
+        repeat(
+          3,
+          minmax(0,1fr)
+        );
+
+      gap: 10px;
+
+      margin-top: 12px;
+
+      padding-top: 12px;
+
+      border-top:
+        1px solid
+        rgba(255,255,255,.07);
+    }
+
+
+
+    /*
+     * ==========================================================
+     * SMALL CARD
+     * ==========================================================
+     */
+
+    .hr-rail-card {
+      min-width: 0;
+
+      overflow: hidden;
+
+      color: white;
+
+      background:
+        rgba(13,20,31,.88);
+
+      border:
+        1px solid
+        rgba(255,255,255,.10);
+
+      border-radius: 13px;
+
+      box-shadow:
+        inset
+        0 1px 0
+        rgba(255,255,255,.025);
+    }
+
+
+
+    /*
+     * ==========================================================
+     * SMALL PLAYABLE VIDEO
+     * ==========================================================
+     */
+
+    .hr-rail-media {
+      position: relative;
+
+      width: 100%;
+
+      aspect-ratio:
+        16 / 8.7;
+
+      overflow: hidden;
+
+      background: #000;
+    }
+
+
+    .hr-rail-video {
+      position: absolute;
+
+      inset: 0;
+
+      display: block;
+
+      width: 100%;
+      height: 100%;
+
+      object-fit: cover;
+
+      background: #000;
+
+      pointer-events: auto;
+    }
+
+
+    .hr-rail-shade {
+      position: absolute;
+
+      z-index: 2;
+
+      inset: 0;
+
+      pointer-events: none;
+
+      background:
+        linear-gradient(
+          180deg,
+          transparent 42%,
+          rgba(0,0,0,.32)
+        );
+    }
+
+
+    .hr-play-small {
+      position: absolute;
+
+      z-index: 5;
+
+      top: 50%;
+      left: 50%;
+
+      width:
+        clamp(
+          40px,
+          4cqw,
+          48px
+        );
+
+      height:
+        clamp(
+          40px,
+          4cqw,
+          48px
+        );
+
+      transform:
+        translate(
+          -50%,
+          -50%
+        );
+
+      padding-left: 3px;
+
+      font-size: 14px;
+    }
+
+
+    .hr-small-duration {
+      left: auto;
+      right: 8px;
+      bottom: 7px;
+
+      padding:
+        4px 6px;
+
+      font-size: 9px;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * SMALL DETAILS
+     * ==========================================================
+     */
+
+    .hr-rail-details {
+      position: relative;
+
+      min-height: 76px;
+
+      padding:
+        9px 10px 9px 13px;
+
+      box-sizing: border-box;
+    }
+
+
+    .hr-red-bar {
+      position: absolute;
+
+      top: 0;
+      left: 0;
+
+      width: 3px;
+      height: 44px;
+
+      background:
+        #ff344b;
+
+      box-shadow:
+        0 0 7px
+        rgba(255,51,73,.26);
+    }
+
+
+    .hr-rail-matchup {
+      width: 100%;
+      min-width: 0;
+
+      display: grid;
+
+      grid-template-columns:
+        minmax(0,1fr)
+        auto
+        minmax(0,1fr);
+
+      align-items: center;
+
+      gap: 7px;
+    }
+
+
+    .hr-mini-team {
+      min-width: 0;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 6px;
+    }
+
+
+    .hr-mini-away {
+      justify-content: flex-start;
+    }
+
+
+    .hr-mini-home {
+      justify-content: flex-end;
+    }
+
+
+    .hr-mini-home strong {
+      order: 2;
+    }
+
+
+    .hr-mini-team .hr-logo {
+      width:
+        clamp(
+          23px,
+          2.35cqw,
+          29px
+        );
+
+      height:
+        clamp(
+          23px,
+          2.35cqw,
+          29px
+        );
+    }
+
+
+    .hr-mini-team strong {
+      min-width: 0;
+
+      overflow: hidden;
+
+      color: white;
+
+      font-size:
+        clamp(
+          10px,
+          1.3cqw,
+          14px
+        );
+
+      font-weight: 950;
+
+      text-overflow: ellipsis;
+
+      white-space: nowrap;
+    }
+
+
+    .hr-vs {
+      color:
+        rgba(210,220,235,.42);
+
+      font-size: 8px;
+
+      font-weight: 900;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * SMALL FOOTER
+     * ==========================================================
+     */
+
+    .hr-rail-footer {
+      min-width: 0;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 7px;
+
+      margin-top: 8px;
+
+      padding-top: 7px;
+
+      border-top:
+        1px solid
+        rgba(255,255,255,.075);
+
+      color:
+        rgba(215,224,237,.56);
+
+      font-size:
+        clamp(
+          6px,
+          .72cqw,
+          8px
+        );
+
+      font-weight: 900;
+
+      letter-spacing: .75px;
+
+      white-space: nowrap;
+    }
+
+
+    .hr-rail-footer .hr-red-dot {
+      width: 5px;
+      height: 5px;
+    }
+
+
+    .hr-game-label {
+      overflow: hidden;
+
+      text-overflow: ellipsis;
+    }
+
+
+    .hr-espn-link {
+      flex: 0 0 auto;
+
+      margin-left: auto;
+
+      color:
+        rgba(215,224,237,.48);
+
+      text-decoration: none;
+
+      font-size: 6px;
+
+      font-weight: 900;
+
+      letter-spacing: .35px;
+
+      pointer-events: auto;
+    }
+
+
+    .hr-espn-link:hover {
+      color: white;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * VIEW ALL BUTTON
+     * ==========================================================
+     */
+
+    .hr-view-all {
+      position: relative;
+
+      z-index: 3;
+
+      width: fit-content;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      gap: 8px;
+
+      margin:
+        14px auto 0;
+
+      padding:
+        9px 17px;
+
+      border-radius: 999px;
+
+      color:
+        rgba(215,224,237,.62);
+
+      background:
+        rgba(255,255,255,.025);
+
+      border:
+        1px solid
+        rgba(255,255,255,.11);
+
+      font-family: inherit;
+
+      font-size: 8px;
+
+      font-weight: 900;
+
+      letter-spacing: 1px;
+
+      cursor: pointer;
+
+      pointer-events: auto;
+
+      transition:
+        background .15s ease,
+        color .15s ease;
+    }
+
+
+    .hr-view-all:hover {
+      color: white;
+
+      background:
+        rgba(255,255,255,.06);
+    }
+
+
+    .hr-list-icon {
+      --mdc-icon-size: 16px;
+
+      color: currentColor;
+    }
+
+
+    .hr-view-arrow {
+      display: inline-block;
+
+      margin-left: 2px;
+
+      font-size: 12px;
+
+      transition:
+        transform .18s ease;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * EMPTY
+     * ==========================================================
+     */
+
+    .hr-empty {
+      min-height: 130px;
+
+      display: flex;
+
+      flex-direction: column;
+
+      align-items: center;
+
+      justify-content: center;
+
+      gap: 5px;
+
+      padding: 20px;
+
+      box-sizing: border-box;
+
+      color: white;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(20,27,39,.99),
+          rgba(7,13,22,.99)
+        );
+    }
+
+
+    .hr-empty-title {
+      font-size: 16px;
+
+      font-weight: 950;
+    }
+
+
+    .hr-empty-sub {
+      color:
+        rgba(220,228,240,.55);
+
+      font-size: 10px;
+    }
+```
+
+</details>
+
+---
 
 ## 🛠️ Troubleshooting
 

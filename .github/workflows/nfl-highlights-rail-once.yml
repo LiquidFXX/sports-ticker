@@ -1,9 +1,9 @@
 name: Clean up NFL docs once
 
 on:
-  push:
-    paths:
-      - '.github/nfl-docs-trigger.txt'
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write

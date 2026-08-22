@@ -8229,6 +8229,912 @@ card_mod:
 
 ---
 
+## 5. Conditional Alert Cards
+
+Cards designed to be hidden until needed to alert you to some action.
+
+<img width="354" alt="image" src="https://github.com/user-attachments/assets/ceb7470a-0033-46a5-bf76-8bcfac58799d" /> <img width="383"  alt="image" src="https://github.com/user-attachments/assets/b012ad16-276f-47db-8ffd-47c4eabc239d" />
+
+
+<details>
+<summary>Copy YAML</summary>
+
+```yaml
+type: grid
+column_span: 2
+cards:
+  - type: heading
+    heading: Alerts
+    icon: mdi:alert-decagram
+  - type: custom:button-card
+    entity: sensor.espn_nfl_scoreboard_raw
+    show_name: false
+    show_icon: false
+    show_state: false
+    triggers_update: all
+    variables:
+      src: sensor.espn_nfl_scoreboard_raw
+    styles:
+      card:
+        - padding: 0
+        - border-radius: 18px
+        - overflow: hidden
+        - background: var(--ha-card-background, var(--card-background-color))
+        - border: 1px solid var(--divider-color)
+        - box-shadow: var(--ha-card-box-shadow, 0 8px 24px rgba(0,0,0,.16))
+        - container-type: inline-size
+      grid:
+        - grid-template-areas: '"main"'
+    custom_fields:
+      main: |
+        [[[
+          const st = states[variables.src];
+          const events = st?.attributes?.events || [];
+
+          const logo = t =>
+            t?.logo ||
+            t?.logos?.[0]?.href ||
+            "";
+
+          const games = events.map(event => {
+            const c = event?.competitions?.[0] || {};
+            const status = c.status || event.status || {};
+            const situation = c.situation || event.situation || {};
+            const teams = c.competitors || [];
+
+            return {
+              event,
+              c,
+              status,
+              situation,
+              away: teams.find(x => x.homeAway === "away") || {},
+              home: teams.find(x => x.homeAway === "home") || {}
+            };
+          });
+
+          const g = games.find(x =>
+            String(x.status?.type?.state || "").toLowerCase() === "in" &&
+            (
+              x.situation?.isRedZone === true ||
+              x.situation?.redZone === true
+            )
+          );
+
+          if (!g) {
+            return `
+              <div class="idle">
+                <small>RED ZONE</small>
+                <b>NO RED ZONE ACTION</b>
+              </div>
+            `;
+          }
+
+          const sit = g.situation;
+
+          const possession =
+            sit?.possession ||
+            sit?.possessionTeam?.id ||
+            "";
+
+          const poss =
+            [g.away,g.home].find(x =>
+              String(x?.id || x?.team?.id || "") === String(possession) ||
+              x?.team?.abbreviation === possession
+            ) || {};
+
+          const clock =
+            [
+              g.status?.period ? `Q${g.status.period}` : "",
+              g.status?.displayClock || ""
+            ].filter(Boolean).join(" • ");
+
+          return `
+            <div class="wrap">
+
+              <div class="label">
+                <span class="dot"></span>
+                RED ZONE
+              </div>
+
+              <div class="score">
+                <div>
+                  ${logo(g.away.team) ? `<img src="${logo(g.away.team)}">` : ""}
+                  <b>${g.away?.team?.abbreviation || ""}</b>
+                  <strong>${g.away?.score ?? "0"}</strong>
+                </div>
+
+                <span>—</span>
+
+                <div>
+                  ${logo(g.home.team) ? `<img src="${logo(g.home.team)}">` : ""}
+                  <b>${g.home?.team?.abbreviation || ""}</b>
+                  <strong>${g.home?.score ?? "0"}</strong>
+                </div>
+              </div>
+
+              <div class="possession">
+                ${poss?.team?.abbreviation || "OFFENSE"} BALL
+              </div>
+
+              <div class="situation">
+                ${sit?.downDistanceText || sit?.shortDownDistanceText || "RED ZONE"}
+              </div>
+
+              <div class="clock">${clock}</div>
+
+            </div>
+          `;
+        ]]]
+    card_mod:
+      style: |
+        .wrap {
+          padding:16px;
+          text-align:center;
+          color:var(--primary-text-color);
+          background:
+            radial-gradient(circle at top,rgba(255,50,70,.13),transparent 55%);
+        }
+
+        .label {
+          display:flex;
+          justify-content:center;
+          align-items:center;
+          gap:6px;
+          color:#ff7b89;
+          font-size:11px;
+          font-weight:950;
+          letter-spacing:1px;
+        }
+
+        .dot {
+          width:8px;
+          height:8px;
+          border-radius:50%;
+          background:#ff4052;
+          box-shadow:0 0 10px rgba(255,64,82,.8);
+        }
+
+        .score {
+          display:flex;
+          justify-content:center;
+          align-items:center;
+          gap:14px;
+          margin:14px 0;
+        }
+
+        .score div {
+          display:flex;
+          align-items:center;
+          gap:7px;
+        }
+
+        .score img {
+          width:36px;
+          height:36px;
+          object-fit:contain;
+        }
+
+        .score strong {
+          font-size:24px;
+        }
+
+        .possession {
+          color:#ff9aa5;
+          font-size:10px;
+          font-weight:900;
+        }
+
+        .situation {
+          margin-top:5px;
+          font-size:20px;
+          font-weight:950;
+        }
+
+        .clock {
+          margin-top:5px;
+          color:var(--secondary-text-color);
+          font-size:10px;
+          font-weight:800;
+        }
+
+        .idle {
+          min-height:90px;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          justify-content:center;
+          gap:5px;
+          color:var(--secondary-text-color);
+        }
+
+        .idle small {
+          font-size:9px;
+          letter-spacing:1px;
+        }
+
+        /* Unified NFL dashboard theme overrides */
+        .wrap {
+          color: var(--primary-text-color);
+        }
+    grid_options:
+      columns: 12
+      rows: auto
+  - type: custom:button-card
+    entity: sensor.espn_nfl_scoreboard_raw
+    show_name: false
+    show_icon: false
+    show_state: false
+    triggers_update: all
+    variables:
+      src: sensor.espn_nfl_scoreboard_raw
+    styles:
+      card:
+        - padding: 0
+        - border-radius: 18px
+        - overflow: hidden
+        - background: var(--ha-card-background, var(--card-background-color))
+        - border: 1px solid var(--divider-color)
+        - box-shadow: var(--ha-card-box-shadow, 0 8px 24px rgba(0,0,0,.16))
+        - container-type: inline-size
+      grid:
+        - grid-template-areas: '"main"'
+    custom_fields:
+      main: |
+        [[[
+          const events =
+            states[variables.src]?.attributes?.events || [];
+
+          const logo = t =>
+            t?.logo ||
+            t?.logos?.[0]?.href ||
+            "";
+
+          const candidates = [];
+
+          events.forEach(event => {
+            const c = event?.competitions?.[0] || {};
+            const status = c.status || event.status || {};
+            const state = String(status?.type?.state || "").toLowerCase();
+
+            if (state !== "in") return;
+
+            const teams = c.competitors || [];
+            const away = teams.find(x => x.homeAway === "away") || {};
+            const home = teams.find(x => x.homeAway === "home") || {};
+            const odds = c?.odds?.[0] || {};
+
+            let favorite = "";
+
+            if (odds?.awayTeamOdds?.favorite === true)
+              favorite = away?.team?.abbreviation || "";
+
+            if (odds?.homeTeamOdds?.favorite === true)
+              favorite = home?.team?.abbreviation || "";
+
+            if (!favorite && odds?.details) {
+              const m = String(odds.details).match(/^([A-Z0-9]+)\s*-/);
+              if (m) favorite = m[1];
+            }
+
+            if (!favorite) return;
+
+            const awayScore = Number(away.score || 0);
+            const homeScore = Number(home.score || 0);
+
+            const underdog =
+              favorite === away?.team?.abbreviation
+                ? home
+                : away;
+
+            const favoriteTeam =
+              favorite === away?.team?.abbreviation
+                ? away
+                : home;
+
+            const dogScore = Number(underdog.score || 0);
+            const favScore = Number(favoriteTeam.score || 0);
+
+            if (dogScore <= favScore) return;
+
+            candidates.push({
+              c,
+              status,
+              away,
+              home,
+              underdog,
+              favoriteTeam,
+              lead: dogScore - favScore,
+              details: odds?.details || "",
+              spread: odds?.spread ?? ""
+            });
+          });
+
+          candidates.sort((a,b) => {
+            const pa = Number(a.status?.period || 0);
+            const pb = Number(b.status?.period || 0);
+            return pb - pa || b.lead - a.lead;
+          });
+
+          const g = candidates[0];
+
+          if (!g) {
+            return `
+              <div class="empty">
+                <b>UPSET WATCH</b>
+                <span>No live upsets right now</span>
+              </div>
+            `;
+          }
+
+          const team = x => `
+            <div class="team">
+              ${logo(x.team) ? `<img src="${logo(x.team)}">` : ""}
+              <b>${x?.team?.abbreviation || ""}</b>
+              <strong>${x?.score ?? "0"}</strong>
+            </div>
+          `;
+
+          const clock =
+            [
+              g.status?.period ? `Q${g.status.period}` : "",
+              g.status?.displayClock || ""
+            ].filter(Boolean).join(" • ");
+
+          return `
+            <div class="wrap">
+
+              <div class="header">
+                <span>⚠</span>
+                UPSET WATCH
+              </div>
+
+              <div class="score">
+                ${team(g.away)}
+                <span>—</span>
+                ${team(g.home)}
+              </div>
+
+              <div class="alert">
+                ${g.underdog?.team?.abbreviation || "UNDERDOG"}
+                LEADS BY ${g.lead}
+              </div>
+
+              <div class="line">
+                Pregame: ${g.details || g.spread || "favorite available"}
+              </div>
+
+              <div class="clock">${clock}</div>
+
+            </div>
+          `;
+        ]]]
+    card_mod:
+      style: |
+        .wrap {
+          padding:16px;
+          color:var(--primary-text-color);
+          background:
+            radial-gradient(circle at top left,rgba(255,190,60,.10),transparent 55%);
+        }
+
+        .header {
+          display:flex;
+          align-items:center;
+          gap:6px;
+          color:#ffd166;
+          font-size:11px;
+          font-weight:950;
+          letter-spacing:1px;
+        }
+
+        .score {
+          display:flex;
+          justify-content:center;
+          align-items:center;
+          gap:14px;
+          margin:16px 0 11px;
+        }
+
+        .team {
+          display:flex;
+          align-items:center;
+          gap:7px;
+        }
+
+        .team img {
+          width:38px;
+          height:38px;
+          object-fit:contain;
+        }
+
+        .team strong {
+          font-size:25px;
+        }
+
+        .alert {
+          text-align:center;
+          font-size:16px;
+          font-weight:950;
+        }
+
+        .line,.clock {
+          text-align:center;
+          margin-top:5px;
+          color:var(--secondary-text-color);
+          font-size:10px;
+        }
+
+        .empty {
+          min-height:100px;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          justify-content:center;
+          gap:5px;
+        }
+
+        .empty span {
+          color:var(--secondary-text-color);
+          font-size:10px;
+        }
+
+        /* Unified NFL dashboard theme overrides */
+        .wrap {
+          color: var(--primary-text-color);
+        }
+    grid_options:
+      columns: 12
+      rows: auto
+  - type: custom:button-card
+    entity: sensor.espn_nfl_scoreboard_raw
+    show_name: false
+    show_icon: false
+    show_state: false
+    triggers_update: all
+    variables:
+      src: sensor.espn_nfl_scoreboard_raw
+      prefer_favorite: true
+    styles:
+      card:
+        - padding: 0
+        - border-radius: 18px
+        - overflow: hidden
+        - background: var(--ha-card-background, var(--card-background-color))
+        - border: 1px solid var(--divider-color)
+        - box-shadow: var(--ha-card-box-shadow, 0 8px 24px rgba(0,0,0,.16))
+        - container-type: inline-size
+      grid:
+        - grid-template-areas: '"main"'
+    custom_fields:
+      main: |
+        [[[
+          const st =
+            states[variables.src];
+
+          const attrs =
+            st?.attributes || {};
+
+          const events =
+            attrs.events || [];
+
+          const fav =
+            String(
+              attrs.favorite_team || ""
+            ).toUpperCase();
+
+          const logo = t =>
+            t?.logo ||
+            t?.logos?.[0]?.href ||
+            "";
+
+          const candidates = [];
+
+          events.forEach(event => {
+
+            const c =
+              event?.competitions?.[0] ||
+              {};
+
+            const status =
+              c.status ||
+              event.status ||
+              {};
+
+            if (
+              String(
+                status?.type?.state || ""
+              ).toLowerCase() !== "in"
+            ) return;
+
+
+            const teams =
+              c.competitors || [];
+
+
+            const situation =
+              c.situation ||
+              event.situation ||
+              {};
+
+
+            /*
+             * Search several ESPN locations for
+             * the most recent play.
+             */
+
+            let play =
+              situation?.lastPlay ||
+              c?.lastPlay ||
+              event?.lastPlay ||
+              null;
+
+
+            if (!play) {
+
+              const currentDrive =
+                c?.drives?.current;
+
+              const plays =
+                currentDrive?.plays;
+
+              if (
+                Array.isArray(plays) &&
+                plays.length
+              ) {
+                play =
+                  plays[
+                    plays.length - 1
+                  ];
+              }
+            }
+
+
+            const text =
+              String(
+                play?.text ||
+                play?.shortText ||
+                play?.description ||
+                ""
+              );
+
+
+            if (
+              !/touchdown|\bTD\b/i.test(text)
+            ) {
+              return;
+            }
+
+
+            const playTeamId =
+              String(
+                play?.team?.id ||
+                situation?.possession ||
+                ""
+              );
+
+
+            let scoringTeam =
+              teams.find(
+                x =>
+                  String(
+                    x?.team?.id ||
+                    x?.id ||
+                    ""
+                  ) === playTeamId
+              );
+
+
+            /*
+             * If ESPN doesn't identify the team on the play,
+             * try to detect its abbreviation from the text.
+             */
+
+            if (!scoringTeam) {
+
+              scoringTeam =
+                teams.find(
+                  x =>
+                    text
+                      .toUpperCase()
+                      .includes(
+                        String(
+                          x?.team?.abbreviation ||
+                          ""
+                        ).toUpperCase()
+                      )
+                );
+
+            }
+
+
+            candidates.push({
+
+              c,
+              status,
+              teams,
+              play,
+              text,
+
+              scoringTeam,
+
+              favorite:
+                teams.some(
+                  x =>
+                    x?.team?.abbreviation ===
+                    fav
+                ),
+
+              date:
+                play?.clock?.displayValue ||
+                status?.displayClock ||
+                ""
+
+            });
+
+          });
+
+
+          let g =
+            variables.prefer_favorite
+              ? candidates.find(
+                  x => x.favorite
+                )
+              : null;
+
+
+          g ||= candidates[0];
+
+
+          if (!g) {
+
+            return `
+              <div class="waiting">
+
+                <small>SCORING ALERT</small>
+
+                <b>
+                  WAITING FOR THE NEXT TOUCHDOWN
+                </b>
+
+              </div>
+            `;
+          }
+
+
+          const away =
+            g.teams.find(
+              x =>
+                x.homeAway === "away"
+            ) || {};
+
+
+          const home =
+            g.teams.find(
+              x =>
+                x.homeAway === "home"
+            ) || {};
+
+
+          const scoring =
+            g.scoringTeam || {};
+
+
+          const color =
+            scoring?.team?.color
+              ? `#${scoring.team.color.replace("#","")}`
+              : "#3178ff";
+
+
+          return `
+            <div
+              class="touchdown"
+              style="
+                --team-color:${color};
+              "
+            >
+
+              <div class="eyebrow">
+                TOUCHDOWN
+              </div>
+
+
+              ${
+                logo(scoring.team)
+                  ? `
+                    <div class="logo">
+                      <img src="${logo(scoring.team)}">
+                    </div>
+                  `
+                  : ""
+              }
+
+
+              <div class="team-name">
+                ${
+                  scoring?.team?.displayName ||
+                  scoring?.team?.shortDisplayName ||
+                  scoring?.team?.abbreviation ||
+                  "NFL"
+                }
+              </div>
+
+
+              <div class="play">
+                ${g.text}
+              </div>
+
+
+              <div class="score">
+
+                <span>
+                  ${away?.team?.abbreviation || ""}
+                  <b>${away?.score ?? "0"}</b>
+                </span>
+
+                <i>—</i>
+
+                <span>
+                  ${home?.team?.abbreviation || ""}
+                  <b>${home?.score ?? "0"}</b>
+                </span>
+
+              </div>
+
+
+              <div class="clock">
+
+                ${
+                  g.status?.period
+                    ? `Q${g.status.period}`
+                    : ""
+                }
+
+                ${
+                  g.status?.displayClock
+                    ? ` • ${g.status.displayClock}`
+                    : ""
+                }
+
+              </div>
+
+            </div>
+          `;
+        ]]]
+    card_mod:
+      style: |
+        .touchdown {
+          position:relative;
+          min-height:190px;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          justify-content:center;
+          padding:18px;
+          box-sizing:border-box;
+          overflow:hidden;
+          color:white;
+          background:
+            radial-gradient(
+              circle at center,
+              color-mix(
+                in srgb,
+                var(--team-color) 38%,
+                transparent
+              ),
+              transparent 65%
+            ),
+            rgba(9,15,25,.93);
+        }
+
+        .touchdown::after {
+          content:"";
+          position:absolute;
+          left:15%;
+          right:15%;
+          bottom:0;
+          height:3px;
+          background:var(--team-color);
+          box-shadow:
+            0 0 15px var(--team-color);
+        }
+
+        .eyebrow {
+          color:rgba(255,255,255,.70);
+          font-size:10px;
+          font-weight:950;
+          letter-spacing:2px;
+        }
+
+        .logo {
+          width:72px;
+          height:72px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          margin:9px 0 4px;
+        }
+
+        .logo img {
+          max-width:100%;
+          max-height:100%;
+          object-fit:contain;
+          filter:drop-shadow(0 5px 12px rgba(0,0,0,.28));
+        }
+
+        .team-name {
+          font-size:20px;
+          font-weight:950;
+          text-transform:uppercase;
+          letter-spacing:.5px;
+        }
+
+        .play {
+          max-width:90%;
+          margin-top:6px;
+          text-align:center;
+          color:rgba(255,255,255,.74);
+          font-size:10px;
+          font-weight:650;
+          line-height:1.3;
+        }
+
+        .score {
+          display:flex;
+          align-items:center;
+          gap:9px;
+          margin-top:10px;
+          font-size:10px;
+          font-weight:800;
+        }
+
+        .score span {
+          display:flex;
+          align-items:center;
+          gap:4px;
+        }
+
+        .score b {
+          font-size:16px;
+        }
+
+        .score i {
+          opacity:.4;
+          font-style:normal;
+        }
+
+        .clock {
+          margin-top:4px;
+          color:rgba(255,255,255,.55);
+          font-size:9px;
+          font-weight:800;
+        }
+
+        .waiting {
+          min-height:100px;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          justify-content:center;
+          gap:5px;
+          color:var(--primary-text-color);
+        }
+
+        .waiting small {
+          color:var(--secondary-text-color);
+          font-size:8px;
+          letter-spacing:1px;
+        }
+    grid_options:
+      columns: 12
+      rows: auto
+
+
+```
+
+</details>
+
+---
+
 ## 🛠️ Troubleshooting
 
 ### Next Game card shows no favorite

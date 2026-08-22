@@ -1,0 +1,44 @@
+name: Add CFB screenshot reference once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/cfb-screenshot-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-cfb-example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add screenshot reference and remove one-time workflow
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("examples/CFB.md")
+          text = path.read_text(encoding="utf-8")
+          image = '<img src="images/CFB/cfb_rankings_card.png" alt="College Football Rankings card example" width="420">'
+          needle = '> ESPN reports `previous_rank: 0` for preseason rankings. This card shows no movement during preseason instead of treating every team as newly ranked.'
+
+          if image not in text:
+              if needle not in text:
+                  raise SystemExit("Could not find the Example 1 preseason note in examples/CFB.md")
+              text = text.replace(needle, needle + "\n\n" + image, 1)
+              path.write_text(text, encoding="utf-8")
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/cfb-screenshot-once.yml
+          git add examples/CFB.md
+          git commit -m "Add CFB rankings screenshot to example page"
+          git push

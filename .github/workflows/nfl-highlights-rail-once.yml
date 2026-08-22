@@ -91,3 +91,5 @@ The reusable card is also stored in [`nfl_highlights_rail_card.yaml`](nfl_highli
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Add NFL highlights rail example"
           git push
+
+# Trigger once after the workflow exists on the default branch.

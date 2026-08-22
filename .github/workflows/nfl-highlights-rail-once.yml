@@ -1,4 +1,4 @@
-name: Add NFL highlights rail docs once
+name: Clean up NFL docs once
 
 on:
   issues:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   update-nfl-docs:
-    if: github.event.issue.title == 'Run NFL highlights rail docs update'
+    if: github.event.issue.title == 'Run NFL docs cleanup'
     runs-on: ubuntu-latest
 
     steps:
@@ -19,80 +19,194 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Add Highlights Rail example to NFL docs
+      - name: Clean up NFL examples documentation
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          docs_path = Path("examples/NFL.md")
-          yaml_path = Path("examples/nfl_highlights_rail_card.yaml")
+          path = Path('examples/NFL.md')
+          text = path.read_text(encoding='utf-8')
 
-          text = docs_path.read_text(encoding="utf-8")
-          yaml_text = yaml_path.read_text(encoding="utf-8").rstrip()
-
+          # ------------------------------------------------------
+          # Layout table
+          # ------------------------------------------------------
           old_row = '| 3. NFL Game Highlights | Playable ESPN highlights with score and recap | `sensor.espn_nfl_scoreboard_raw` |'
-          new_row = '| 3. NFL Highlights Rail | Featured playable highlight, three inline videos, and expandable extras | `sensor.espn_nfl_scoreboard_raw` |'
+          new_rows = '''| 3. Featured Game Highlight | One featured playable ESPN highlight with score and recap | `sensor.espn_nfl_scoreboard_raw` |
+| 4. NFL Highlights Rail | Featured highlight plus three playable videos and expandable extras | `sensor.espn_nfl_scoreboard_raw` |'''
 
           if old_row in text:
-              text = text.replace(old_row, new_row, 1)
-          elif new_row not in text:
-              raise SystemExit("Could not find NFL example table row")
+              text = text.replace(old_row, new_rows, 1)
+          elif '| 4. NFL Highlights Rail |' not in text:
+              raise SystemExit('Could not update NFL layout table')
 
-          old_heading = "## 3. NFL Game Highlights"
-          new_heading = "## 3. NFL Highlights Rail"
+          # ------------------------------------------------------
+          # Section 3 name: keep the older single-video card, but
+          # make its purpose distinct from the new Highlights Rail.
+          # ------------------------------------------------------
+          text = text.replace(
+              '## 3. NFL Game Highlights',
+              '## 3. Featured Game Highlight',
+              1,
+          )
 
-          if old_heading in text:
-              start = text.index(old_heading)
-          elif new_heading in text:
-              start = text.index(new_heading)
+          # ------------------------------------------------------
+          # Scrolling ticker: NFL should be the active default in
+          # NFL.md. Other leagues remain examples users can add.
+          # ------------------------------------------------------
+          old_note = '''# IMPORTANT FOR THIS EXAMPLE:
+# The supplied configuration below currently has MLB as the active
+# entry under `sports:`. To display NFL as well, add this block:
+#
+#   - label: NFL
+#     entity: sensor.espn_nfl_scoreboard_raw
+#     kind: football
+#     accent: '#2563eb'
+#     enabled: true
+#     teams: null'''
+
+          new_note = '''# IMPORTANT FOR THIS EXAMPLE:
+# NFL is enabled by default below. Add more league blocks under
+# `sports:` if you want one ticker to combine NFL with CFB, MLB,
+# NBA, WNBA, NHL, or other supported scoreboard sensors.'''
+
+          if old_note in text:
+              text = text.replace(old_note, new_note, 1)
+
+          old_sports = '''    # Active example from the supplied YAML.
+    - label: MLB
+      entity: sensor.espn_mlb_scoreboard_raw
+      kind: baseball
+      accent: '#ef4444'
+      enabled: true
+
+      # null = all teams.
+      # Or use a list such as: [ATL, NYY]
+      teams: null
+
+    # Example NFL block - remove the leading # characters to enable.
+    #
+    # - label: NFL
+    #   entity: sensor.espn_nfl_scoreboard_raw
+    #   kind: football
+    #   accent: '#2563eb'
+    #   enabled: true
+    #   teams: null'''
+
+          new_sports = '''    # NFL is the active default in this NFL example.
+    - label: NFL
+      entity: sensor.espn_nfl_scoreboard_raw
+      kind: football
+      accent: '#2563eb'
+      enabled: true
+
+      # null = all NFL teams.
+      # Or use a list such as: [ATL, TB]
+      teams: null
+
+    # Example additional league - remove the leading # characters
+    # to include MLB in the same ticker.
+    #
+    # - label: MLB
+    #   entity: sensor.espn_mlb_scoreboard_raw
+    #   kind: baseball
+    #   accent: '#ef4444'
+    #   enabled: true
+    #   teams: null'''
+
+          if old_sports in text:
+              text = text.replace(old_sports, new_sports, 1)
+          elif '- label: NFL\n      entity: sensor.espn_nfl_scoreboard_raw\n      kind: football' not in text:
+              raise SystemExit('Could not make NFL the ticker default')
+
+          stale_guidance = "To reproduce the multi-sport layout, add one instance of the reusable ticker for each league and set that card's `sport` and `sensor` variables to the matching Sports Ticker scoreboard sensor."
+          current_guidance = "To build a multi-sport ticker, add additional league blocks under `variables.sports`. A single card can combine NFL, CFB, MLB, NBA, WNBA, NHL, and other supported raw scoreboard sensors."
+          if stale_guidance in text:
+              text = text.replace(stale_guidance, current_guidance, 1)
+
+          # ------------------------------------------------------
+          # Section 4 intro, screenshot, and notes
+          # ------------------------------------------------------
+          if '## 4. League Highlights' in text:
+              start = text.index('## 4. League Highlights')
+          elif '## 4. NFL Highlights Rail' in text:
+              start = text.index('## 4. NFL Highlights Rail')
           else:
-              raise SystemExit("Could not find NFL highlights section")
+              raise SystemExit('Could not find section 4')
 
-          end = text.index("## 🛠️ Troubleshooting", start)
+          details = text.index('<details>', start)
+          end = text.index('## 🛠️ Troubleshooting', details)
 
-          section = f'''## 3. NFL Highlights Rail
+          new_intro = '''## 4. NFL Highlights Rail
 
-A wide, TV-style NFL highlights rail built from `sensor.espn_nfl_scoreboard_raw`. It automatically finds playable ESPN highlight videos, shows one featured highlight with the final score and team branding, keeps the next three videos playable directly inside the card, and expands additional videos with **View All Highlights**.
+A wide, TV-style multi-game highlights card built from `sensor.espn_nfl_scoreboard_raw`. It shows one featured playable ESPN highlight with the final score and team branding, keeps the next three highlights playable directly inside the card, and can expand additional videos with **View All Highlights**.
 
-<img src="images/NFL/nfl_highlights_rail.webp" alt="NFL Highlights Rail card example" width="520">
+<img src="images/NFL/nfl_highlights_rail.webp" alt="NFL Highlights Rail card example" width="100%">
 
 > **New user notes**
 > - Requires the **Sports Ticker** integration, `custom:button-card`, and `card-mod`.
+> - Uses `sensor.espn_nfl_scoreboard_raw`; no team abbreviation is hard-coded.
 > - `preview_items: 4` shows one featured video plus three smaller playable highlights.
-> - `max_items: 16` controls the maximum number of playable videos available through **View All Highlights**.
-> - Set `prefer_favorite_game: true` to prioritize a playable highlight involving the configured NFL favorite team.
-> - Each smaller highlight plays directly inside the card; starting one video pauses the other videos.
-> - **View All Highlights** appears when more than four playable ESPN highlights are available and expands them inside the card.
-> - ESPN links remain available as a fallback when you want to open the highlight on ESPN.
-> - The card uses the direct video sources already exposed in `sensor.espn_nfl_scoreboard_raw`; it does not require a separate media entity.
-
-The reusable card is also stored in [`nfl_highlights_rail_card.yaml`](nfl_highlights_rail_card.yaml).
-
-<details>
-<summary>Copy YAML</summary>
-
-```yaml
-{yaml_text}
-```
-
-</details>
-
+> - `max_items: 16` controls the maximum number of highlights available through **View All Highlights**.
+> - Set `prefer_favorite_game: true` to prioritize a completed-game highlight involving the configured NFL favorite team.
+> - Starting one video pauses the other videos in the card.
+> - **View All Highlights** appears only when more than four playable highlights are available.
+> - ESPN links remain available as a fallback for opening a highlight on ESPN.
+> - The card uses direct video sources already exposed by the raw NFL scoreboard sensor; it does not require a separate media entity.
+> - This rail is intentionally limited to completed games so the **FINAL GAMES** subtitle matches the content.
 
 '''
 
-          text = text[:start] + section + text[end:]
-          docs_path.write_text(text, encoding="utf-8")
+          text = text[:start] + new_intro + text[details:]
+
+          # ------------------------------------------------------
+          # Keep FINAL GAMES semantically correct by filtering the
+          # Highlights Rail to completed games only. Limit the edit
+          # to section 4 so the older featured card is unchanged.
+          # ------------------------------------------------------
+          start = text.index('## 4. NFL Highlights Rail')
+          end = text.index('## 🛠️ Troubleshooting', start)
+          section = text[start:end]
+
+          marker = '''          const state =
+            String(
+              status?.type?.state ||
+              ""
+            ).toLowerCase();
+
+
+          const date ='''
+
+          replacement = '''          const state =
+            String(
+              status?.type?.state ||
+              ""
+            ).toLowerCase();
+
+
+          // This card is labeled FINAL GAMES, so ignore live and
+          // upcoming events even if ESPN exposes a video for them.
+          if (state !== "post")
+            return;
+
+
+          const date ='''
+
+          if marker in section and 'if (state !== "post")' not in section:
+              section = section.replace(marker, replacement, 1)
+              text = text[:start] + section + text[end:]
+
+          path.write_text(text, encoding='utf-8')
           PY
 
           git rm .github/workflows/nfl-highlights-rail-once.yml
           git add examples/NFL.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Add NFL highlights rail example"
+          git commit -m "Clean up NFL examples documentation"
           git push
 
       - name: Close trigger issue
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh issue close "${{ github.event.issue.number }}" --comment "NFL Highlights Rail docs updated."
+        run: gh issue close "${{ github.event.issue.number }}" --comment "NFL.md cleanup completed."

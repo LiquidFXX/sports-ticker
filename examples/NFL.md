@@ -32,6 +32,7 @@ sensor.espn_nfl_next_game
 | 3. NFL Gamecast | Live game details | `sensor.espn_nfl_scoreboard_raw` |
 | 4. NFL Old School Poster | Featured matchup poster | `sensor.espn_nfl_next_game` |
 | 5. Game / team stats starter | Entity testing and quick access | Both |
+| 6. Scrolling Sports Ticker | Compact ESPN-style scrolling scores; can mix NFL with other enabled sports | NFL and other raw scoreboard sensors |
 
 ---
 
@@ -668,6 +669,28 @@ entities:
   - entity: sensor.espn_nfl_next_game
     name: Next game
 ```
+
+---
+
+## 6. Scrolling Sports Ticker
+
+A compact ESPN-style scrolling ticker for NFL scores and schedules. The same reusable card can be stacked for other enabled leagues, which makes it possible to build a multi-sport ticker like the preview below.
+
+<img src="images/NFL/nfl_multi_sport_ticker.gif" alt="NFL multi-sport scrolling ticker example" width="100%">
+
+The reusable YAML is available here:
+
+[`multi_league_ticker_card.yaml`](multi_league_ticker_card.yaml)
+
+For an NFL-only ticker, configure the card with:
+
+```yaml
+variables:
+  sport: NFL
+  sensor: sensor.espn_nfl_scoreboard_raw
+```
+
+To reproduce the multi-sport layout, add one instance of the reusable ticker for each league and set that card's `sport` and `sensor` variables to the matching Sports Ticker scoreboard sensor.
 
 ## 🛠️ Troubleshooting
 

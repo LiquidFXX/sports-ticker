@@ -163,7 +163,6 @@ A wide, TV-style multi-game highlights card built from `sensor.espn_nfl_scoreboa
           path.write_text(text, encoding='utf-8')
           PY
 
-          git rm .github/workflows/nfl-highlights-rail-once.yml .github/nfl-docs-trigger.txt
           git add examples/NFL.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

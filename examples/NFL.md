@@ -30,10 +30,6 @@ sensor.espn_nfl_next_game
 | 1. Favorite Team Next Game | A polished featured card for the configured favorite team | `sensor.espn_nfl_next_game` |
 | 2. Scrolling Sports Ticker | Compact ESPN-style scrolling scores; can mix NFL with other enabled sports | NFL and other raw scoreboard sensors |
 | 3. NFL Game Highlights | Playable ESPN highlights with score and recap | `sensor.espn_nfl_scoreboard_raw` |
-| 4. What's on this week | Schedule and matchup guide | `sensor.espn_nfl_scoreboard_raw` |
-| 5. NFL Gamecast | Live game details | `sensor.espn_nfl_scoreboard_raw` |
-| 6. NFL Old School Poster | Featured matchup poster | `sensor.espn_nfl_next_game` |
-| 7. Game / team stats starter | Entity testing and quick access | Both |
 
 ---
 
@@ -5545,50 +5541,6 @@ card_mod:
 
 </details>
 
----
-
-## 4. What's on this week
-
-Uses `sensor.espn_nfl_scoreboard_raw` for a weekly matchup list with favorite-team priority, kickoff times, live/final status, scores, and broadcast networks.
-
-```yaml
-entity: sensor.espn_nfl_scoreboard_raw
-```
-
----
-
-## 5. NFL Gamecast
-
-Uses `sensor.espn_nfl_scoreboard_raw` for a featured game view with NFL-specific fields such as quarter, clock, possession, down and distance, drives, venue, and team totals.
-
-```yaml
-variables:
-  src: sensor.espn_nfl_scoreboard_raw
-```
-
----
-
-## 6. NFL Old School Poster
-
-A featured matchup card designed around the configured favorite team's next game.
-
-```yaml
-entity: sensor.espn_nfl_next_game
-```
-
----
-
-## 7. Game / team stats starter
-
-```yaml
-type: entities
-title: Game / Team Stats (example)
-entities:
-  - entity: sensor.espn_nfl_scoreboard_raw
-    name: Raw scoreboard
-  - entity: sensor.espn_nfl_next_game
-    name: Next game
-```
 
 ## 🛠️ Troubleshooting
 

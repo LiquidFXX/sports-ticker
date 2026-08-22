@@ -1,0 +1,93 @@
+name: Add NFL highlights rail docs once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/nfl-highlights-rail-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update-nfl-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add Highlights Rail example to NFL docs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          docs_path = Path("examples/NFL.md")
+          yaml_path = Path("examples/nfl_highlights_rail_card.yaml")
+
+          text = docs_path.read_text(encoding="utf-8")
+          yaml_text = yaml_path.read_text(encoding="utf-8").rstrip()
+
+          old_row = '| 3. NFL Game Highlights | Playable ESPN highlights with score and recap | `sensor.espn_nfl_scoreboard_raw` |'
+          new_row = '| 3. NFL Highlights Rail | Featured playable highlight, three inline videos, and expandable extras | `sensor.espn_nfl_scoreboard_raw` |'
+
+          if old_row in text:
+              text = text.replace(old_row, new_row, 1)
+          elif new_row not in text:
+              raise SystemExit("Could not find NFL example table row")
+
+          old_heading = "## 3. NFL Game Highlights"
+          new_heading = "## 3. NFL Highlights Rail"
+
+          if old_heading in text:
+              start = text.index(old_heading)
+          elif new_heading in text:
+              start = text.index(new_heading)
+          else:
+              raise SystemExit("Could not find NFL Game Highlights section")
+
+          end = text.index("## 🛠️ Troubleshooting", start)
+
+          section = f'''## 3. NFL Highlights Rail
+
+A wide, TV-style NFL highlights rail built from `sensor.espn_nfl_scoreboard_raw`. It automatically finds playable ESPN highlight videos, shows one featured highlight with the final score and team branding, keeps the next three videos playable directly inside the card, and expands additional videos with **View All Highlights**.
+
+<img src="images/NFL/nfl_highlights_rail.webp" alt="NFL Highlights Rail card example" width="520">
+
+> **New user notes**
+> - Requires the **Sports Ticker** integration, `custom:button-card`, and `card-mod`.
+> - `preview_items: 4` shows one featured video plus three smaller playable highlights.
+> - `max_items: 16` controls the maximum number of playable videos available through **View All Highlights**.
+> - Set `prefer_favorite_game: true` to prioritize a playable highlight involving the configured NFL favorite team.
+> - Each smaller highlight plays directly inside the card; starting one video pauses the other videos.
+> - **View All Highlights** appears when more than four playable ESPN highlights are available and expands them inside the card.
+> - ESPN links remain available as a fallback when you want to open the highlight on ESPN.
+> - The card uses the direct video sources already exposed in `sensor.espn_nfl_scoreboard_raw`; it does not require a separate media entity.
+
+The reusable card is also stored in [`nfl_highlights_rail_card.yaml`](nfl_highlights_rail_card.yaml).
+
+<details>
+<summary>Copy YAML</summary>
+
+```yaml
+{yaml_text}
+```
+
+</details>
+
+
+'''
+
+          text = text[:start] + section + text[end:]
+          docs_path.write_text(text, encoding="utf-8")
+          PY
+
+          git rm .github/workflows/nfl-highlights-rail-once.yml
+          git add examples/NFL.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Add NFL highlights rail example"
+          git push

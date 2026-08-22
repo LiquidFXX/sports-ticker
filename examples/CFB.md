@@ -37,6 +37,8 @@ A full Top 25 card built from the dedicated rankings sensor. It follows `primary
 >
 > ESPN reports `previous_rank: 0` for preseason rankings. This card shows no movement during preseason instead of treating every team as newly ranked.
 
+<img src="images/CFB/cfb_rankings_card.png" alt="College Football Rankings card example" width="420">
+
 <details>
 <summary>Copy YAML</summary>
 

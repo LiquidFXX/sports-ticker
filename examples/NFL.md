@@ -29,10 +29,11 @@ sensor.espn_nfl_next_game
 | --- | --- | --- |
 | 1. Favorite Team Next Game | A polished featured card for the configured favorite team | `sensor.espn_nfl_next_game` |
 | 2. Scrolling Sports Ticker | Compact ESPN-style scrolling scores; can mix NFL with other enabled sports | NFL and other raw scoreboard sensors |
-| 3. What's on this week | Schedule and matchup guide | `sensor.espn_nfl_scoreboard_raw` |
-| 4. NFL Gamecast | Live game details | `sensor.espn_nfl_scoreboard_raw` |
-| 5. NFL Old School Poster | Featured matchup poster | `sensor.espn_nfl_next_game` |
-| 6. Game / team stats starter | Entity testing and quick access | Both |
+| 3. NFL Game Highlights | Playable ESPN highlights with score and recap | `sensor.espn_nfl_scoreboard_raw` |
+| 4. What's on this week | Schedule and matchup guide | `sensor.espn_nfl_scoreboard_raw` |
+| 5. NFL Gamecast | Live game details | `sensor.espn_nfl_scoreboard_raw` |
+| 6. NFL Old School Poster | Featured matchup poster | `sensor.espn_nfl_next_game` |
+| 7. Game / team stats starter | Entity testing and quick access | Both |
 
 ---
 
@@ -3808,7 +3809,1744 @@ To reproduce the multi-sport layout, add one instance of the reusable ticker for
 
 ---
 
-## 3. What's on this week
+## 3. NFL Game Highlights
+
+A playable NFL highlights card built from `sensor.espn_nfl_scoreboard_raw`. It automatically finds games with playable ESPN highlight videos, prefers completed games first, and can optionally prioritize the favorite team configured in Sports Ticker.
+
+<img src="images/NFL/nfl_game_highlights.jpg" alt="NFL Game Highlights card example" width="420">
+
+> **New user notes**
+> - Requires the **Sports Ticker** integration, `custom:button-card`, and `card-mod`.
+> - Make sure `sensor.espn_nfl_scoreboard_raw` exists and contains an `attributes.events` list.
+> - Set `prefer_favorite_game: true` to try to show your configured favorite team's highlight first.
+> - Keep `show_recap: true` to show ESPN recap text below the score, or set it to `false` to show the video headline instead.
+> - The video is only shown when ESPN exposes a direct playable highlight source. Otherwise the card displays **No playable highlights available**.
+> - `grid_options` is optional; adjust or remove it if your dashboard uses a different layout.
+
+<details>
+<summary>Copy YAML</summary>
+
+```yaml
+# ==============================================================
+# NFL GAME HIGHLIGHTS CARD - NEW USER NOTES
+#
+# Requirements:
+#   - Sports Ticker integration
+#   - custom:button-card
+#   - card-mod
+#
+# This card reads sensor.espn_nfl_scoreboard_raw and looks for
+# direct playable ESPN highlight videos in the scoreboard data.
+#
+# Useful options under variables:
+#   prefer_favorite_game: false
+#     false = newest completed game with a playable highlight
+#     true  = prefer a playable highlight involving your favorite team
+#
+#   show_recap: true
+#     true  = show recap text below the score
+#     false = show the video headline instead
+#
+# If ESPN has not supplied a direct playable video for the current
+# scoreboard events, the card will show "No playable highlights available".
+#
+# grid_options is optional and may be changed or removed to match
+# your Home Assistant dashboard layout.
+# ==============================================================
+type: custom:button-card
+entity: sensor.espn_nfl_scoreboard_raw
+show_name: false
+show_icon: false
+show_state: false
+tap_action:
+  action: none
+hold_action:
+  action: none
+triggers_update:
+  - sensor.espn_nfl_scoreboard_raw
+grid_options:
+  columns: 12
+  rows: auto
+variables:
+  src: sensor.espn_nfl_scoreboard_raw
+  title: GAME HIGHLIGHTS
+  prefer_favorite_game: false
+  show_recap: true
+styles:
+  card:
+    - padding: 0
+    - border-radius: 22px
+    - overflow: hidden
+    - border: 1px solid rgba(255,255,255,0.14)
+    - background: rgba(9,15,25,0.82)
+    - box-shadow: 0 14px 36px rgba(0,0,0,0.26)
+    - backdrop-filter: blur(24px) saturate(145%)
+    - -webkit-backdrop-filter: blur(24px) saturate(145%)
+    - container-type: inline-size
+  grid:
+    - grid-template-areas: '"content"'
+    - grid-template-columns: 1fr
+    - grid-template-rows: auto
+  custom_fields:
+    content:
+      - width: 100%
+      - min-width: 0
+      - pointer-events: auto
+custom_fields:
+  content: |
+    [[[
+      const st =
+        states[variables.src];
+
+
+      /*
+       * ========================================================
+       * HELPERS
+       * ========================================================
+       */
+
+      const esc = value =>
+        String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+
+
+      const truthy = value =>
+        !(
+          value === false ||
+          String(value).toLowerCase() === "false"
+        );
+
+
+      const getLogo = team =>
+        team?.logo ||
+        team?.logos?.[0]?.href ||
+        team?.logos?.[0]?.url ||
+        "";
+
+
+      const competitors = comp =>
+        Array.isArray(
+          comp?.competitors
+        )
+          ? comp.competitors
+          : [];
+
+
+      const getAway = comp =>
+        competitors(comp)
+          .find(
+            x =>
+              x?.homeAway === "away"
+          ) || {};
+
+
+      const getHome = comp =>
+        competitors(comp)
+          .find(
+            x =>
+              x?.homeAway === "home"
+          ) || {};
+
+
+      const teamAbbr = competitor =>
+        competitor?.team?.abbreviation ||
+        competitor?.team?.shortDisplayName ||
+        "TEAM";
+
+
+      const score = competitor =>
+        competitor?.score ??
+        "—";
+
+
+      const formatDuration = raw => {
+
+        const total =
+          Number(raw || 0);
+
+
+        if (
+          !Number.isFinite(total) ||
+          total <= 0
+        ) {
+          return "";
+        }
+
+
+        const minutes =
+          Math.floor(
+            total / 60
+          );
+
+
+        const seconds =
+          Math.floor(
+            total % 60
+          );
+
+
+        return (
+          `${minutes}:` +
+          String(seconds)
+            .padStart(2, "0")
+        );
+      };
+
+
+      /*
+       * ========================================================
+       * EMPTY
+       * ========================================================
+       */
+
+      if (!st) {
+
+        return `
+          <div class="empty">
+
+            <div class="empty-title">
+              ${esc(
+                variables.title ||
+                "GAME HIGHLIGHTS"
+              )}
+            </div>
+
+            <div class="empty-sub">
+              Scoreboard unavailable
+            </div>
+
+          </div>
+        `;
+      }
+
+
+      const attrs =
+        st.attributes || {};
+
+
+      const events =
+        Array.isArray(
+          attrs.events
+        )
+          ? attrs.events
+          : [];
+
+
+      const favorite =
+        String(
+          attrs.favorite_team ||
+          ""
+        )
+          .trim()
+          .toUpperCase();
+
+
+      const preferFavorite =
+        truthy(
+          variables.prefer_favorite_game
+        );
+
+
+      const showRecap =
+        truthy(
+          variables.show_recap
+        );
+
+
+      /*
+       * ========================================================
+       * VIDEO SOURCES
+       * ========================================================
+       */
+
+      const headlineObjects = (
+        event,
+        comp
+      ) => [
+
+        ...(
+          Array.isArray(
+            comp?.headlines
+          )
+            ? comp.headlines
+            : []
+        ),
+
+        ...(
+          Array.isArray(
+            event?.headlines
+          )
+            ? event.headlines
+            : []
+        )
+
+      ];
+
+
+      const getVideos = (
+        event,
+        comp
+      ) => {
+
+        const videos = [];
+
+
+        if (
+          Array.isArray(
+            comp?.highlights
+          )
+        ) {
+          videos.push(
+            ...comp.highlights
+          );
+        }
+
+
+        if (
+          Array.isArray(
+            event?.highlights
+          )
+        ) {
+          videos.push(
+            ...event.highlights
+          );
+        }
+
+
+        headlineObjects(
+          event,
+          comp
+        )
+          .forEach(
+            headline => {
+
+              if (
+                Array.isArray(
+                  headline?.video
+                )
+              ) {
+                videos.push(
+                  ...headline.video
+                );
+              }
+
+            }
+          );
+
+
+        const seen =
+          new Set();
+
+
+        return videos.filter(
+          video => {
+
+            const key =
+              String(
+                video?.id ||
+                video?.headline ||
+                video?.thumbnail ||
+                ""
+              );
+
+
+            if (!key)
+              return false;
+
+
+            if (seen.has(key))
+              return false;
+
+
+            seen.add(key);
+
+            return true;
+          }
+        );
+      };
+
+
+      const getDirectVideo = video => {
+
+        const links =
+          video?.links || {};
+
+
+        return (
+          links?.source?.HD?.href ||
+          links?.source?.href ||
+          links?.source?.mezzanine?.href ||
+          links?.HD?.href ||
+          links?.mezzanine?.href ||
+          ""
+        );
+      };
+
+
+      const getEspnPage = video =>
+        video?.links?.web?.href ||
+        video?.links?.self?.href ||
+        "";
+
+
+      /*
+       * ========================================================
+       * BUILD PLAYABLE GAME LIST
+       * ========================================================
+       */
+
+      let games =
+        events
+          .map(
+            event => {
+
+              const comp =
+                event?.competitions?.[0] ||
+                {};
+
+
+              const videos =
+                getVideos(
+                  event,
+                  comp
+                );
+
+
+              const playableVideos =
+                videos.filter(
+                  video =>
+                    !!getDirectVideo(
+                      video
+                    )
+                );
+
+
+              if (
+                !playableVideos.length
+              ) {
+                return null;
+              }
+
+
+              const away =
+                getAway(comp);
+
+
+              const home =
+                getHome(comp);
+
+
+              const awayAbbr =
+                String(
+                  teamAbbr(away)
+                )
+                  .toUpperCase();
+
+
+              const homeAbbr =
+                String(
+                  teamAbbr(home)
+                )
+                  .toUpperCase();
+
+
+              const isFavorite =
+                !!favorite &&
+                (
+                  awayAbbr === favorite ||
+                  homeAbbr === favorite
+                );
+
+
+              const status =
+                comp?.status ||
+                event?.status ||
+                {};
+
+
+              const state =
+                String(
+                  status?.type?.state ||
+                  ""
+                )
+                  .toLowerCase();
+
+
+              return {
+
+                event,
+                comp,
+
+                away,
+                home,
+
+                videos:
+                  playableVideos,
+
+                favorite:
+                  isFavorite,
+
+                state,
+
+                date:
+                  comp?.date ||
+                  event?.date ||
+                  ""
+
+              };
+
+            }
+          )
+          .filter(Boolean);
+
+
+      /*
+       * Completed/newest first
+       */
+
+      games.sort(
+        (a, b) => {
+
+          const aRank =
+            a.state === "post"
+              ? 0
+              : 1;
+
+
+          const bRank =
+            b.state === "post"
+              ? 0
+              : 1;
+
+
+          if (
+            aRank !== bRank
+          ) {
+            return (
+              aRank -
+              bRank
+            );
+          }
+
+
+          return (
+            new Date(
+              b.date || 0
+            ) -
+            new Date(
+              a.date || 0
+            )
+          );
+        }
+      );
+
+
+      /*
+       * ========================================================
+       * SELECT GAME
+       * ========================================================
+       */
+
+      let selected =
+        null;
+
+
+      if (
+        preferFavorite &&
+        favorite
+      ) {
+
+        selected =
+          games.find(
+            game =>
+              game.favorite
+          ) || null;
+
+      }
+
+
+      if (!selected) {
+
+        selected =
+          games[0] ||
+          null;
+
+      }
+
+
+      if (!selected) {
+
+        return `
+          <div class="empty">
+
+            <div class="empty-title">
+              ${esc(
+                variables.title ||
+                "GAME HIGHLIGHTS"
+              )}
+            </div>
+
+            <div class="empty-sub">
+              No playable highlights available
+            </div>
+
+          </div>
+        `;
+      }
+
+
+      /*
+       * ========================================================
+       * VIDEO
+       * ========================================================
+       */
+
+      const video =
+        selected.videos[0];
+
+
+      const directVideo =
+        getDirectVideo(
+          video
+        );
+
+
+      const espnPage =
+        getEspnPage(
+          video
+        );
+
+
+      const thumbnail =
+        video?.thumbnail ||
+        "";
+
+
+      const duration =
+        formatDuration(
+          video?.duration
+        );
+
+
+      /*
+       * ========================================================
+       * GAME
+       * ========================================================
+       */
+
+      const away =
+        selected.away;
+
+
+      const home =
+        selected.home;
+
+
+      const awayTeam =
+        away?.team || {};
+
+
+      const homeTeam =
+        home?.team || {};
+
+
+      const awayAbbr =
+        teamAbbr(away);
+
+
+      const homeAbbr =
+        teamAbbr(home);
+
+
+      const awayLogo =
+        getLogo(
+          awayTeam
+        );
+
+
+      const homeLogo =
+        getLogo(
+          homeTeam
+        );
+
+
+      /*
+       * ========================================================
+       * HEADLINES
+       * ========================================================
+       */
+
+      const headlines =
+        headlineObjects(
+          selected.event,
+          selected.comp
+        );
+
+
+      const recap =
+        headlines.find(
+          item =>
+            String(
+              item?.type || ""
+            ).toLowerCase() ===
+            "recap"
+        ) ||
+        headlines[0] ||
+        {};
+
+
+      const videoTitle =
+        video?.headline ||
+        video?.description ||
+        recap?.shortLinkText ||
+        `${awayAbbr} vs. ${homeAbbr} Highlights`;
+
+
+      const recapText =
+        recap?.shortLinkText ||
+        recap?.description ||
+        "";
+
+
+      /*
+       * ========================================================
+       * LOGO
+       * ========================================================
+       */
+
+      const matchupLogo = (
+        url,
+        abbreviation
+      ) => {
+
+        if (!url) {
+
+          return `
+            <div class="logo-plate">
+
+              <span class="logo-fallback">
+                ${esc(abbreviation)}
+              </span>
+
+            </div>
+          `;
+        }
+
+
+        return `
+          <div class="logo-plate">
+
+            <img
+              class="team-logo"
+              src="${esc(url)}"
+              alt="${esc(abbreviation)}"
+            >
+
+          </div>
+        `;
+      };
+
+
+      /*
+       * ========================================================
+       * OUTPUT
+       * ========================================================
+       */
+
+      return `
+        <div class="highlight-shell">
+
+
+          <!-- PLAYABLE HERO VIDEO -->
+
+          <div class="video-panel">
+
+            <video
+              class="highlight-video"
+              controls
+              playsinline
+              preload="metadata"
+              ${
+                thumbnail
+                  ? `poster="${esc(thumbnail)}"`
+                  : ""
+              }
+            >
+
+              <source
+                src="${esc(directVideo)}"
+                type="video/mp4"
+              >
+
+            </video>
+
+
+            <!-- HERO TEXT -->
+
+            <div class="hero-overlay">
+
+
+              <div class="hero-meta">
+
+                <span class="hero-label">
+                  HIGHLIGHTS
+                </span>
+
+
+                ${
+                  selected.state === "post"
+                    ? `
+                      <span class="hero-status">
+                        FINAL
+                      </span>
+                    `
+                    : ""
+                }
+
+              </div>
+
+
+              <div class="hero-title">
+                ${esc(videoTitle)}
+              </div>
+
+
+            </div>
+
+
+            ${
+              duration
+                ? `
+                  <div class="duration">
+                    ${esc(duration)}
+                  </div>
+                `
+                : ""
+            }
+
+
+          </div>
+
+
+          <!-- COMPACT GLASS FOOTER -->
+
+          <div class="info-bar">
+
+
+            <!-- SCORE -->
+
+            <div class="matchup">
+
+              <div class="team">
+
+                ${matchupLogo(
+                  awayLogo,
+                  awayAbbr
+                )}
+
+                <span class="team-name">
+                  ${esc(awayAbbr)}
+                </span>
+
+                <span class="team-score">
+                  ${esc(
+                    score(away)
+                  )}
+                </span>
+
+              </div>
+
+
+              <span class="score-separator">
+                –
+              </span>
+
+
+              <div class="team">
+
+                ${matchupLogo(
+                  homeLogo,
+                  homeAbbr
+                )}
+
+                <span class="team-name">
+                  ${esc(homeAbbr)}
+                </span>
+
+                <span class="team-score">
+                  ${esc(
+                    score(home)
+                  )}
+                </span>
+
+              </div>
+
+            </div>
+
+
+            <!-- RECAP -->
+
+            <div class="details">
+
+              <div class="recap">
+
+                ${
+                  showRecap &&
+                  recapText
+                    ? esc(recapText)
+                    : esc(videoTitle)
+                }
+
+              </div>
+
+            </div>
+
+
+            <!-- ESPN -->
+
+            ${
+              espnPage
+                ? `
+                  <a
+                    class="espn-button"
+                    href="${esc(espnPage)}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Open on ESPN"
+                  >
+
+                    <span>
+                      ESPN
+                    </span>
+
+                    <span class="arrow">
+                      ↗
+                    </span>
+
+                  </a>
+                `
+                : ""
+            }
+
+
+          </div>
+
+        </div>
+      `;
+    ]]]
+card_mod:
+  style: |
+
+    /*
+     * ==========================================================
+     * ROOT
+     * ==========================================================
+     */
+
+    .highlight-shell {
+      position: relative;
+
+      width: 100%;
+
+      min-width: 0;
+
+      overflow: hidden;
+
+      color: white;
+
+      background:
+        rgba(8,14,24,.92);
+    }
+
+
+
+    /*
+     * ==========================================================
+     * HERO VIDEO
+     * ==========================================================
+     */
+
+    .video-panel {
+      position: relative;
+
+      width: 100%;
+
+      aspect-ratio:
+        16 / 9;
+
+      overflow: hidden;
+
+      background: #000;
+    }
+
+
+    .highlight-video {
+      position: absolute;
+
+      inset: 0;
+
+      display: block;
+
+      width: 100%;
+      height: 100%;
+
+      object-fit: contain;
+
+      background: #000;
+
+      pointer-events: auto;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * VIDEO TITLE OVERLAY
+     * ==========================================================
+     */
+
+    .hero-overlay {
+      position: absolute;
+
+      z-index: 5;
+
+      left: 0;
+      right: 0;
+      bottom: 0;
+
+      min-width: 0;
+
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 6px;
+
+      padding:
+        64px
+        18px
+        15px;
+
+      box-sizing:
+        border-box;
+
+      pointer-events: none;
+
+      background:
+        linear-gradient(
+          180deg,
+          rgba(3,7,13,0) 0%,
+          rgba(3,7,13,.10) 18%,
+          rgba(3,7,13,.70) 65%,
+          rgba(3,7,13,.93) 100%
+        );
+    }
+
+
+    .hero-meta {
+      display: flex;
+
+      align-items: center;
+
+      gap: 7px;
+    }
+
+
+    .hero-label {
+      color:
+        rgba(255,255,255,.72);
+
+      font-size: 10px;
+
+      font-weight: 900;
+
+      letter-spacing: 1.5px;
+    }
+
+
+    .hero-status {
+      padding:
+        3px 7px;
+
+      border-radius:
+        999px;
+
+      color:
+        rgba(255,255,255,.88);
+
+      background:
+        rgba(255,255,255,.11);
+
+      border:
+        1px solid
+        rgba(255,255,255,.14);
+
+      font-size: 9px;
+
+      font-weight: 900;
+
+      letter-spacing: .5px;
+
+      backdrop-filter:
+        blur(10px);
+
+      -webkit-backdrop-filter:
+        blur(10px);
+    }
+
+
+    /*
+     * The headline now wraps instead of clipping.
+     */
+
+    .hero-title {
+      width: min(
+        82%,
+        760px
+      );
+
+      min-width: 0;
+
+      display: -webkit-box;
+
+      overflow: hidden;
+
+      color: white;
+
+      font-size:
+        clamp(
+          17px,
+          2.35cqw,
+          24px
+        );
+
+      font-weight: 950;
+
+      line-height: 1.15;
+
+      letter-spacing:
+        -.25px;
+
+      white-space: normal;
+
+      overflow-wrap: anywhere;
+
+      word-break: normal;
+
+      text-overflow: ellipsis;
+
+      text-shadow:
+        0 2px 9px
+        rgba(0,0,0,.72);
+
+      -webkit-line-clamp: 2;
+
+      -webkit-box-orient:
+        vertical;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * DURATION
+     * ==========================================================
+     */
+
+    .duration {
+      position: absolute;
+
+      z-index: 8;
+
+      top: 12px;
+      right: 12px;
+
+      padding:
+        5px 9px;
+
+      border-radius:
+        10px;
+
+      color: white;
+
+      background:
+        rgba(3,7,13,.76);
+
+      border:
+        1px solid
+        rgba(255,255,255,.16);
+
+      box-shadow:
+        0 4px 12px
+        rgba(0,0,0,.24);
+
+      backdrop-filter:
+        blur(12px);
+
+      -webkit-backdrop-filter:
+        blur(12px);
+
+      font-size: 12px;
+
+      font-weight: 900;
+
+      font-variant-numeric:
+        tabular-nums;
+
+      pointer-events: none;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * COMPACT GLASS FOOTER
+     * ==========================================================
+     */
+
+    .info-bar {
+      position: relative;
+
+      min-width: 0;
+
+      display: grid;
+
+      grid-template-columns:
+        auto
+        minmax(0,1fr)
+        auto;
+
+      align-items: center;
+
+      gap: 14px;
+
+      padding:
+        11px 14px;
+
+      box-sizing:
+        border-box;
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(29,38,53,.78),
+          rgba(12,20,32,.86)
+        );
+
+      border-top:
+        1px solid
+        rgba(255,255,255,.11);
+
+      backdrop-filter:
+        blur(26px)
+        saturate(145%);
+
+      -webkit-backdrop-filter:
+        blur(26px)
+        saturate(145%);
+    }
+
+
+    .info-bar::before {
+      content: "";
+
+      position: absolute;
+
+      inset:
+        0
+        0
+        auto
+        0;
+
+      height: 1px;
+
+      pointer-events: none;
+
+      background:
+        linear-gradient(
+          90deg,
+          transparent,
+          rgba(255,255,255,.20),
+          transparent
+        );
+    }
+
+
+
+    /*
+     * ==========================================================
+     * MATCHUP
+     * ==========================================================
+     */
+
+    .matchup {
+      display: flex;
+
+      align-items: center;
+
+      gap: 6px;
+
+      padding:
+        6px 8px;
+
+      border-radius: 13px;
+
+      background:
+        rgba(255,255,255,.055);
+
+      border:
+        1px solid
+        rgba(255,255,255,.09);
+
+      white-space: nowrap;
+
+      box-shadow:
+        inset
+        0 1px 0
+        rgba(255,255,255,.035);
+    }
+
+
+    .team {
+      display: flex;
+
+      align-items: center;
+
+      gap: 5px;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * LOGO PLATES
+     * ==========================================================
+     */
+
+    .logo-plate {
+      width: 32px;
+      height: 32px;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      flex: 0 0 auto;
+
+      padding: 3px;
+
+      box-sizing: border-box;
+
+      border-radius: 9px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(255,255,255,.98),
+          rgba(232,238,246,.91)
+        );
+
+      border:
+        1px solid
+        rgba(255,255,255,.88);
+
+      box-shadow:
+        0 3px 8px
+        rgba(0,0,0,.18);
+    }
+
+
+    .team-logo {
+      width: 24px;
+      height: 24px;
+
+      object-fit: contain;
+    }
+
+
+    .logo-fallback {
+      color: #182132;
+
+      font-size: 8px;
+
+      font-weight: 950;
+    }
+
+
+    .team-name {
+      color:
+        rgba(255,255,255,.69);
+
+      font-size: 10px;
+
+      font-weight: 850;
+    }
+
+
+    .team-score {
+      color: white;
+
+      font-size: 20px;
+
+      font-weight: 950;
+
+      line-height: 1;
+
+      font-variant-numeric:
+        tabular-nums;
+    }
+
+
+    .score-separator {
+      color:
+        rgba(255,255,255,.24);
+
+      font-size: 11px;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * RECAP
+     * ==========================================================
+     */
+
+    .details {
+      min-width: 0;
+
+      padding-right: 4px;
+    }
+
+
+    /*
+     * Proper two-line clamp prevents the recap from
+     * running into the ESPN button or card edge.
+     */
+
+    .recap {
+      min-width: 0;
+
+      display: -webkit-box;
+
+      overflow: hidden;
+
+      color:
+        rgba(225,232,242,.72);
+
+      font-size: 11px;
+
+      font-weight: 650;
+
+      line-height: 1.35;
+
+      white-space: normal;
+
+      overflow-wrap: anywhere;
+
+      word-break: normal;
+
+      text-overflow: ellipsis;
+
+      -webkit-line-clamp: 2;
+
+      -webkit-box-orient:
+        vertical;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * ESPN BUTTON
+     * ==========================================================
+     */
+
+    .espn-button {
+      flex: 0 0 auto;
+
+      display: inline-flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      gap: 5px;
+
+      padding:
+        7px 9px;
+
+      border-radius:
+        9px;
+
+      color:
+        rgba(255,255,255,.90);
+
+      background:
+        rgba(255,255,255,.065);
+
+      border:
+        1px solid
+        rgba(255,255,255,.10);
+
+      text-decoration: none;
+
+      font-size: 9px;
+
+      font-weight: 900;
+
+      letter-spacing: .3px;
+
+      pointer-events: auto;
+
+      transition:
+        background .15s ease,
+        transform .15s ease;
+    }
+
+
+    .espn-button:hover {
+      background:
+        rgba(255,255,255,.12);
+
+      transform:
+        translateY(-1px);
+    }
+
+
+    .arrow {
+      color:
+        rgba(255,255,255,.48);
+
+      font-size: 10px;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * EMPTY
+     * ==========================================================
+     */
+
+    .empty {
+      min-height: 150px;
+
+      display: flex;
+
+      flex-direction: column;
+
+      align-items: center;
+
+      justify-content: center;
+
+      gap: 5px;
+
+      padding: 20px;
+
+      color: white;
+
+      background:
+        rgba(10,16,26,.90);
+    }
+
+
+    .empty-title {
+      font-size: 15px;
+
+      font-weight: 900;
+    }
+
+
+    .empty-sub {
+      color:
+        rgba(225,232,242,.60);
+
+      font-size: 11px;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * TABLET
+     * ==========================================================
+     */
+
+    @container (max-width: 760px) {
+
+      .hero-title {
+        width: 90%;
+      }
+
+
+      .info-bar {
+        grid-template-columns:
+          auto
+          minmax(0,1fr);
+
+        gap:
+          9px
+          12px;
+      }
+
+
+      .espn-button {
+        grid-column:
+          2;
+
+        justify-self:
+          end;
+
+        margin-top:
+          -3px;
+      }
+
+
+      .details {
+        padding-right: 0;
+      }
+
+    }
+
+
+
+    /*
+     * ==========================================================
+     * MOBILE
+     * ==========================================================
+     */
+
+    @container (max-width: 500px) {
+
+      .hero-overlay {
+        padding:
+          48px
+          12px
+          10px;
+      }
+
+
+      .hero-title {
+        width: 94%;
+
+        font-size: 15px;
+
+        -webkit-line-clamp: 2;
+      }
+
+
+      .hero-label {
+        font-size: 8px;
+      }
+
+
+      .hero-status {
+        font-size: 8px;
+
+        padding:
+          2px 6px;
+      }
+
+
+      .duration {
+        top: 8px;
+        right: 8px;
+
+        padding:
+          4px 7px;
+
+        font-size: 10px;
+      }
+
+
+      .info-bar {
+        grid-template-columns:
+          1fr
+          auto;
+
+        gap:
+          8px;
+
+        padding:
+          9px 10px;
+      }
+
+
+      .matchup {
+        width: fit-content;
+
+        padding:
+          5px 6px;
+      }
+
+
+      .details {
+        grid-column:
+          1 / -1;
+
+        grid-row:
+          2;
+      }
+
+
+      .espn-button {
+        grid-column:
+          2;
+
+        grid-row:
+          1;
+
+        align-self:
+          center;
+
+        margin: 0;
+      }
+
+
+      .logo-plate {
+        width: 28px;
+        height: 28px;
+
+        border-radius:
+          8px;
+      }
+
+
+      .team-logo {
+        width: 21px;
+        height: 21px;
+      }
+
+
+      .team-name {
+        font-size: 9px;
+      }
+
+
+      .team-score {
+        font-size: 17px;
+      }
+
+
+      .recap {
+        font-size: 10px;
+      }
+
+    }
+```
+
+</details>
+
+---
+
+## 4. What's on this week
 
 Uses `sensor.espn_nfl_scoreboard_raw` for a weekly matchup list with favorite-team priority, kickoff times, live/final status, scores, and broadcast networks.
 
@@ -3818,7 +5556,7 @@ entity: sensor.espn_nfl_scoreboard_raw
 
 ---
 
-## 4. NFL Gamecast
+## 5. NFL Gamecast
 
 Uses `sensor.espn_nfl_scoreboard_raw` for a featured game view with NFL-specific fields such as quarter, clock, possession, down and distance, drives, venue, and team totals.
 
@@ -3829,7 +5567,7 @@ variables:
 
 ---
 
-## 5. NFL Old School Poster
+## 6. NFL Old School Poster
 
 A featured matchup card designed around the configured favorite team's next game.
 
@@ -3839,7 +5577,7 @@ entity: sensor.espn_nfl_next_game
 
 ---
 
-## 6. Game / team stats starter
+## 7. Game / team stats starter
 
 ```yaml
 type: entities

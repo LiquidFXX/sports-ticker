@@ -6,7 +6,7 @@
 
 Copy/paste Home Assistant dashboard examples for the **Sports Ticker** integration.
 
-The NFL examples use the raw scoreboard sensor and the favorite-team next-game sensor:
+The NFL examples use the raw scoreboard sensor and the favorite-team next-game sensor. The raw NFL scoreboard is also enriched with per-team box-score leaders for live and completed games:
 
 ```yaml
 sensor.espn_nfl_scoreboard_raw
@@ -19,7 +19,7 @@ sensor.espn_nfl_next_game
 | --- | --- |
 | `sports_ticker` integration | Provides ESPN-style NFL data |
 | `sensor.espn_nfl_next_game` | Favorite team's next scheduled game |
-| `sensor.espn_nfl_scoreboard_raw` | Full NFL scoreboard source |
+| `sensor.espn_nfl_scoreboard_raw` | Full NFL scoreboard, highlights, alerts, and per-team game leaders |
 | `custom:button-card` | Required for the custom cards |
 | `card-mod` | Required for advanced styling |
 
@@ -27,9 +27,12 @@ sensor.espn_nfl_next_game
 
 | Layout | Best For | Sensor Used |
 | --- | --- | --- |
-| 1. Favorite Team Next Game | A polished featured card for the configured favorite team | `sensor.espn_nfl_next_game` |
-| 2. Scrolling Sports Ticker | Compact ESPN-style scrolling scores; can mix NFL with other enabled sports | NFL and other raw scoreboard sensors |
-| 3. NFL Game Highlights | Playable ESPN highlights with score and recap | `sensor.espn_nfl_scoreboard_raw` |
+| 1. Favorite Team Next Game | Featured upcoming game for the configured favorite NFL team | `sensor.espn_nfl_next_game` |
+| 2. Scrolling Sports Ticker | ESPN-style scrolling scores, schedules, live status, and alerts | `sensor.espn_nfl_scoreboard_raw` and other enabled scoreboard sensors |
+| 3. Featured Game Highlight | One featured playable ESPN highlight with score and recap | `sensor.espn_nfl_scoreboard_raw` |
+| 4. NFL Highlights Rail | Featured completed-game highlight plus three playable videos and expandable extras | `sensor.espn_nfl_scoreboard_raw` |
+| 5. Conditional Alert Cards | Red Zone, Upset Watch, and Touchdown alerts during live games | `sensor.espn_nfl_scoreboard_raw` |
+| 6. Game Leaders | Away/home passing, rushing, receiving, sacks, and tackles leaders | `sensor.espn_nfl_scoreboard_raw` |
 
 ---
 
@@ -3805,7 +3808,7 @@ To reproduce the multi-sport layout, add one instance of the reusable ticker for
 
 ---
 
-## 3. NFL Game Highlights
+## 3. Featured Game Highlight
 
 A playable NFL highlights card built from `sensor.espn_nfl_scoreboard_raw`. It automatically finds games with playable ESPN highlight videos, prefers completed games first, and can optionally prioritize the favorite team configured in Sports Ticker.
 
@@ -5541,14 +5544,23 @@ card_mod:
 
 </details>
 
-## 4. League Highlights
+## 4. NFL Highlights Rail
 
-A featured next-game card that automatically follows the NFL favorite selected in Sports Ticker. It shows the favorite team, opponent, kickoff date and time, venue, broadcast, week, and whether the game is home or away.
+A wide, TV-style NFL highlights rail built from `sensor.espn_nfl_scoreboard_raw`. It automatically finds playable ESPN highlight videos, shows one featured highlight with the final score and team branding, keeps the next three videos playable directly inside the card, and expands additional videos with **View All Highlights**.
 
-<img width="451"  alt="image" src="https://github.com/user-attachments/assets/173bf784-d5a8-4d1b-83ee-bcc547040360" />
+<img src="images/NFL/nfl_highlights_rail.webp" alt="NFL Highlights Rail card example" width="520">
 
+> **New user notes**
+> - Requires the **Sports Ticker** integration, `custom:button-card`, and `card-mod`.
+> - `preview_items: 4` shows one featured video plus three smaller playable highlights.
+> - `max_items: 16` controls the maximum number of playable videos available through **View All Highlights**.
+> - Set `prefer_favorite_game: true` to prioritize a playable highlight involving the configured NFL favorite team.
+> - Each smaller highlight plays directly inside the card; starting one video pauses the other videos.
+> - **View All Highlights** appears when more than four playable ESPN highlights are available and expands them inside the card.
+> - ESPN links remain available as a fallback when you want to open the highlight on ESPN.
+> - The card uses the direct video sources already exposed in `sensor.espn_nfl_scoreboard_raw`; it does not require a separate media entity.
 
-> No team abbreviation needs to be hard-coded. The card reads the configured favorite directly from `sensor.espn_nfl_next_game`.
+The reusable card is also stored in [`nfl_highlights_rail_card.yaml`](nfl_highlights_rail_card.yaml).
 
 <details>
 <summary>Copy YAML</summary>
@@ -9136,13 +9148,13 @@ cards:
 ---
 
 
-## 6. Favorite Team Next Game
+## 6. Game Leaders
 
-A featured next-game card that automatically follows the NFL favorite selected in Sports Ticker. It shows the favorite team, opponent, kickoff date and time, venue, broadcast, week, and whether the game is home or away.
+A side-by-side NFL game leaders card using the enriched `team_leaders` data in `sensor.espn_nfl_scoreboard_raw`. It shows the leading passer, rusher, receiver, sack leader, and tackle leader for both teams and prefers the configured favorite team's game when usable leader data is available.
 
-<img height="547" alt="image" src="https://github.com/user-attachments/assets/30397392-5f8f-489d-a6e9-1a79694d106e" />
+<img height="547" alt="NFL Game Leaders card example" src="https://github.com/user-attachments/assets/30397392-5f8f-489d-a6e9-1a79694d106e" />
 
-> No team abbreviation needs to be hard-coded. The card reads the configured favorite directly from `sensor.espn_nfl_next_game`.
+> Leader data is available for live and completed games when ESPN exposes a box score. Upcoming games can legitimately show **Waiting for box score** until those statistics exist.
 
 <details>
 <summary>Copy YAML</summary>

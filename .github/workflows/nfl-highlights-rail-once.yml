@@ -1,23 +1,22 @@
-name: Clean up NFL docs once
+name: Finalize NFL examples docs
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
-  workflow_dispatch:
+  push:
+    paths:
+      - '.github/nfl-docs-trigger.txt'
 
 permissions:
   contents: write
 
 jobs:
-  update-nfl-docs:
+  finalize-nfl-docs:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Clean up NFL examples documentation
+      - name: Update NFL.md
         shell: bash
         run: |
           python - <<'PY'
@@ -26,15 +25,43 @@ jobs:
           path = Path('examples/NFL.md')
           text = path.read_text(encoding='utf-8')
 
-          old_row = '| 3. NFL Game Highlights | Playable ESPN highlights with score and recap | `sensor.espn_nfl_scoreboard_raw` |'
-          new_rows = '''| 3. Featured Game Highlight | One featured playable ESPN highlight with score and recap | `sensor.espn_nfl_scoreboard_raw` |
-| 4. NFL Highlights Rail | Featured highlight plus three playable videos and expandable extras | `sensor.espn_nfl_scoreboard_raw` |'''
-          if old_row in text:
-              text = text.replace(old_row, new_rows, 1)
-          elif '| 4. NFL Highlights Rail |' not in text:
-              raise SystemExit('Could not update NFL layout table')
+          # -----------------------------------------------------------------
+          # Intro / requirements / table
+          # -----------------------------------------------------------------
+          text = text.replace(
+              'The NFL examples use the raw scoreboard sensor and the favorite-team next-game sensor:',
+              'The NFL examples use the raw scoreboard sensor and the favorite-team next-game sensor. The raw NFL scoreboard is also enriched with per-team box-score leaders for live and completed games:',
+              1,
+          )
 
-          text = text.replace('## 3. NFL Game Highlights', '## 3. Featured Game Highlight', 1)
+          text = text.replace(
+              '| `sensor.espn_nfl_scoreboard_raw` | Full NFL scoreboard source |',
+              '| `sensor.espn_nfl_scoreboard_raw` | Full NFL scoreboard, highlights, alerts, and per-team game leaders |',
+              1,
+          )
+
+          old_table = '''| 1. Favorite Team Next Game | A polished featured card for the configured favorite team | `sensor.espn_nfl_next_game` |
+| 2. Scrolling Sports Ticker | Compact ESPN-style scrolling scores; can mix NFL with other enabled sports | NFL and other raw scoreboard sensors |
+| 3. NFL Game Highlights | Playable ESPN highlights with score and recap | `sensor.espn_nfl_scoreboard_raw` |'''
+          new_table = '''| 1. Favorite Team Next Game | A polished featured card for the configured favorite team | `sensor.espn_nfl_next_game` |
+| 2. Scrolling Sports Ticker | Compact ESPN-style scrolling scores; can mix NFL with other enabled sports | NFL and other raw scoreboard sensors |
+| 3. Featured Game Highlight | One featured playable ESPN highlight with score and recap | `sensor.espn_nfl_scoreboard_raw` |
+| 4. NFL Highlights Rail | Featured highlight plus three playable videos and expandable extras | `sensor.espn_nfl_scoreboard_raw` |
+| 5. Conditional Alert Cards | Live-game Red Zone and touchdown alerts | `sensor.espn_nfl_scoreboard_raw` |
+| 6. Game Leaders | Away/home passing, rushing, receiving, sacks, and tackles leaders | `sensor.espn_nfl_scoreboard_raw` |'''
+          if old_table in text:
+              text = text.replace(old_table, new_table, 1)
+          elif '| 6. Game Leaders |' not in text:
+              raise SystemExit('NFL layout table did not match expected content')
+
+          # -----------------------------------------------------------------
+          # Section 2 - ticker should be NFL-first and multi-sport in one card
+          # -----------------------------------------------------------------
+          text = text.replace(
+              'A compact ESPN-style scrolling ticker for NFL scores and schedules. The same reusable card can be stacked for other enabled leagues, which makes it possible to build a multi-sport ticker like the preview below.',
+              'A compact ESPN-style scrolling ticker for NFL scores and schedules. A single reusable card can display NFL alongside other enabled sports by adding league blocks under `variables.sports`, which makes it possible to build a multi-sport ticker like the preview below.',
+              1,
+          )
 
           old_note = '''# IMPORTANT FOR THIS EXAMPLE:
 # The supplied configuration below currently has MLB as the active
@@ -95,24 +122,36 @@ jobs:
           if old_sports in text:
               text = text.replace(old_sports, new_sports, 1)
           elif '- label: NFL\n      entity: sensor.espn_nfl_scoreboard_raw\n      kind: football' not in text:
-              raise SystemExit('Could not make NFL the ticker default')
+              raise SystemExit('Could not make NFL the active ticker example')
 
           stale_guidance = "To reproduce the multi-sport layout, add one instance of the reusable ticker for each league and set that card's `sport` and `sensor` variables to the matching Sports Ticker scoreboard sensor."
-          current_guidance = "To build a multi-sport ticker, add additional league blocks under `variables.sports`. A single card can combine NFL, CFB, MLB, NBA, WNBA, NHL, and other supported raw scoreboard sensors."
-          if stale_guidance in text:
-              text = text.replace(stale_guidance, current_guidance, 1)
+          current_guidance = "To build a multi-sport ticker, add additional league blocks under `variables.sports`. One card can combine NFL, CFB, MLB, NBA, WNBA, NHL, and other supported raw scoreboard sensors."
+          text = text.replace(stale_guidance, current_guidance, 1)
 
+          # -----------------------------------------------------------------
+          # Section 3 - one featured highlight
+          # -----------------------------------------------------------------
+          text = text.replace('## 3. NFL Game Highlights', '## 3. Featured Game Highlight', 1)
+          text = text.replace(
+              '<img width="392"  alt="image" src="https://github.com/user-attachments/assets/44bc4b4e-5866-490e-a4df-73c7ade104b9" />',
+              '<img src="images/NFL/nfl_game_highlights.jpg" alt="NFL Featured Game Highlight card example" width="392">',
+              1,
+          )
+
+          # -----------------------------------------------------------------
+          # Section 4 - Highlights Rail
+          # -----------------------------------------------------------------
           if '## 4. League Highlights' in text:
-              start = text.index('## 4. League Highlights')
+              sec4_start = text.index('## 4. League Highlights')
           elif '## 4. NFL Highlights Rail' in text:
-              start = text.index('## 4. NFL Highlights Rail')
+              sec4_start = text.index('## 4. NFL Highlights Rail')
           else:
-              raise SystemExit('Could not find section 4')
+              raise SystemExit('Section 4 was not found')
 
-          details = text.index('<details>', start)
-          new_intro = '''## 4. NFL Highlights Rail
+          sec4_details = text.index('<details>', sec4_start)
+          sec4_intro = '''## 4. NFL Highlights Rail
 
-A wide, TV-style multi-game highlights card built from `sensor.espn_nfl_scoreboard_raw`. It shows one featured playable ESPN highlight with the final score and team branding, keeps the next three highlights playable directly inside the card, and can expand additional videos with **View All Highlights**.
+A wide, TV-style multi-game highlights card built from `sensor.espn_nfl_scoreboard_raw`. It shows one featured playable ESPN highlight with the final score and team branding, keeps the next three completed-game highlights playable directly inside the card, and can expand additional videos with **View All Highlights**.
 
 <img src="images/NFL/nfl_highlights_rail.webp" alt="NFL Highlights Rail card example" width="100%">
 
@@ -125,16 +164,15 @@ A wide, TV-style multi-game highlights card built from `sensor.espn_nfl_scoreboa
 > - Starting one video pauses the other videos in the card.
 > - **View All Highlights** appears only when more than four playable highlights are available.
 > - ESPN links remain available as a fallback for opening a highlight on ESPN.
-> - The card uses direct video sources already exposed by the raw NFL scoreboard sensor; it does not require a separate media entity.
-> - This rail is intentionally limited to completed games so the **FINAL GAMES** subtitle matches the content.
+> - The rail intentionally uses completed games so the **FINAL GAMES** subtitle matches the content.
 
 '''
-          text = text[:start] + new_intro + text[details:]
+          text = text[:sec4_start] + sec4_intro + text[sec4_details:]
 
-          start = text.index('## 4. NFL Highlights Rail')
-          end = text.index('## 🛠️ Troubleshooting', start)
-          section = text[start:end]
-          marker = '''          const state =
+          sec4_start = text.index('## 4. NFL Highlights Rail')
+          sec5_start = text.index('## 5. Conditional Alert Cards', sec4_start)
+          sec4 = text[sec4_start:sec5_start]
+          state_marker = '''          const state =
             String(
               status?.type?.state ||
               ""
@@ -142,29 +180,83 @@ A wide, TV-style multi-game highlights card built from `sensor.espn_nfl_scoreboa
 
 
           const date ='''
-          replacement = '''          const state =
+          state_replacement = '''          const state =
             String(
               status?.type?.state ||
               ""
             ).toLowerCase();
 
 
-          // This card is labeled FINAL GAMES, so ignore live and
-          // upcoming events even if ESPN exposes a video for them.
+          // The card is labeled FINAL GAMES, so only use completed games.
           if (state !== "post")
             return;
 
 
           const date ='''
-          if marker in section and 'if (state !== "post")' not in section:
-              section = section.replace(marker, replacement, 1)
-              text = text[:start] + section + text[end:]
+          if state_marker in sec4 and 'if (state !== "post")' not in sec4:
+              sec4 = sec4.replace(state_marker, state_replacement, 1)
+              text = text[:sec4_start] + sec4 + text[sec5_start:]
+
+          # -----------------------------------------------------------------
+          # Section 6 - Game Leaders using new team_leaders structure
+          # -----------------------------------------------------------------
+          if '## 6. Favorite Team Next Game' in text:
+              sec6_start = text.index('## 6. Favorite Team Next Game')
+          elif '## 6. Game Leaders' in text:
+              sec6_start = text.index('## 6. Game Leaders')
+          else:
+              raise SystemExit('Section 6 was not found')
+
+          sec6_details = text.index('<details>', sec6_start)
+          game_leaders_image = 'https://github.com/user-attachments/assets/30397392-5f8f-489d-a6e9-1a79694d106e'
+          sec6_intro = f'''## 6. Game Leaders
+
+A side-by-side NFL game leaders card built from the per-team box-score data now exposed under `sensor.espn_nfl_scoreboard_raw` → `events[]` → `competitions[0].team_leaders`. It shows the away and home leaders for passing yards, rushing yards, receiving yards, sacks, and tackles with headshots, positions, primary values, and useful secondary details.
+
+<img height="547" alt="NFL Game Leaders card example" src="{game_leaders_image}" />
+
+> **New user notes**
+> - Requires a Sports Ticker version that exposes `competitions[0].team_leaders` on NFL events.
+> - The integration enriches live and completed NFL games from ESPN's summary/box-score data.
+> - Scheduled games intentionally expose the same stable structure with `null` leaders until box-score data exists.
+> - The card prefers a game that actually contains leader data, then prefers the configured favorite team's game when possible.
+> - Both `away` and `home` contain `passing`, `rushing`, `receiving`, `sacks`, and `tackles` keys.
+> - Each populated leader can include `name`, `short_name`, `position`, `headshot`, `value`, `detail`, `team_id`, and `team_abbreviation`.
+> - If ESPN has not published a category yet, the card shows **None** rather than assigning the wrong player.
+
+'''
+          text = text[:sec6_start] + sec6_intro + text[sec6_details:]
+
+          # -----------------------------------------------------------------
+          # Troubleshooting
+          # -----------------------------------------------------------------
+          troubleshooting_marker = '''### Template errors
+
+Keep each `button-card` JavaScript template isolated and avoid duplicate variable declarations.'''
+          leaders_help = '''### Game Leaders shows `None` or `Waiting for box score`
+
+The integration only enriches meaningful `team_leaders` data for live and completed NFL games. Upcoming games keep the same away/home/category structure but the category values are `null`. After upgrading Sports Ticker, reload/restart the integration and confirm the selected event contains `competitions[0].team_leaders`. A single missing category can also be legitimate when ESPN has not published that box-score stat yet.
+
+### Template errors
+
+Keep each `button-card` JavaScript template isolated and avoid duplicate variable declarations.'''
+          if troubleshooting_marker in text and '### Game Leaders shows `None`' not in text:
+              text = text.replace(troubleshooting_marker, leaders_help, 1)
 
           path.write_text(text, encoding='utf-8')
           PY
 
+          # Remove the temporary files that were only used to perform this docs cleanup.
+          git rm .github/workflows/nfl-highlights-rail-once.yml .github/nfl-docs-trigger.txt
+
           git add examples/NFL.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Clean up NFL examples documentation"
+
+          if git diff --cached --quiet; then
+            echo "No documentation changes were required."
+            exit 0
+          fi
+
+          git commit -m "Refresh NFL examples documentation"
           git push

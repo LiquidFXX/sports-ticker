@@ -1,6 +1,9 @@
 name: Finalize NFL examples docs
 
 on:
+  push:
+    paths:
+      - '.github/nfl-docs-trigger.txt'
   schedule:
     - cron: '*/5 * * * *'
   issues:
@@ -11,7 +14,7 @@ permissions:
 
 jobs:
   finalize-nfl-docs:
-    if: github.event_name == 'schedule' || github.event.issue.title == 'Finalize NFL examples docs'
+    if: github.event_name == 'schedule' || github.event_name == 'push' || github.event.issue.title == 'Finalize NFL examples docs'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

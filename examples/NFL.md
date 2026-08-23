@@ -9135,6 +9135,1685 @@ cards:
 
 ---
 
+
+## 6. Favorite Team Next Game
+
+A featured next-game card that automatically follows the NFL favorite selected in Sports Ticker. It shows the favorite team, opponent, kickoff date and time, venue, broadcast, week, and whether the game is home or away.
+
+<img height="547" alt="image" src="https://github.com/user-attachments/assets/30397392-5f8f-489d-a6e9-1a79694d106e" />
+
+> No team abbreviation needs to be hard-coded. The card reads the configured favorite directly from `sensor.espn_nfl_next_game`.
+
+<details>
+<summary>Copy YAML</summary>
+
+```yaml
+
+type: custom:button-card
+entity: sensor.espn_nfl_scoreboard_raw
+
+show_name: false
+show_icon: false
+show_state: false
+
+tap_action:
+  action: none
+
+hold_action:
+  action: none
+
+triggers_update: all
+
+grid_options:
+  columns: 12
+  rows: auto
+
+variables:
+  src: sensor.espn_nfl_scoreboard_raw
+
+  # If multiple games have leader data, prefer the favorite team's game.
+  prefer_favorite: true
+
+
+styles:
+  card:
+    - padding: 0
+    - overflow: hidden
+    - border-radius: 20px
+    - background: var(--ha-card-background, var(--card-background-color))
+    - border: 1px solid var(--divider-color)
+    - box-shadow: var(--ha-card-box-shadow, 0 8px 24px rgba(0,0,0,.14))
+    - container-type: inline-size
+
+  grid:
+    - grid-template-areas: '"main"'
+    - grid-template-columns: 1fr
+    - grid-template-rows: auto
+
+  custom_fields:
+    main:
+      - width: 100%
+      - min-width: 0
+      - pointer-events: auto
+
+
+custom_fields:
+  main: |
+    [[[
+      const st =
+        states[variables.src];
+
+
+      /*
+       * ========================================================
+       * BASIC HELPERS
+       * ========================================================
+       */
+
+      const esc = value =>
+        String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+
+
+      const arr = value =>
+        Array.isArray(value)
+          ? value
+          : [];
+
+
+      const truthy = value =>
+        !(
+          value === false ||
+          String(value).toLowerCase() === "false"
+        );
+
+
+      const getLogo = team =>
+        team?.logo ||
+        team?.logos?.[0]?.href ||
+        team?.logos?.[0]?.url ||
+        "";
+
+
+      const getTeams = comp =>
+        arr(
+          comp?.competitors
+        );
+
+
+      const getAway = comp =>
+        getTeams(comp).find(
+          competitor =>
+            competitor?.homeAway === "away"
+        ) || {};
+
+
+      const getHome = comp =>
+        getTeams(comp).find(
+          competitor =>
+            competitor?.homeAway === "home"
+        ) || {};
+
+
+      const teamAbbr = competitor =>
+        competitor?.team?.abbreviation ||
+        competitor?.team?.shortDisplayName ||
+        competitor?.team?.name ||
+        "TEAM";
+
+
+      /*
+       * ========================================================
+       * SENSOR CHECK
+       * ========================================================
+       */
+
+      if (!st) {
+
+        return `
+          <div class="gl-empty">
+
+            <strong>
+              GAME LEADERS
+            </strong>
+
+            <span>
+              Scoreboard unavailable
+            </span>
+
+          </div>
+        `;
+      }
+
+
+      const attrs =
+        st.attributes || {};
+
+
+      const events =
+        arr(
+          attrs.events
+        );
+
+
+      if (!events.length) {
+
+        return `
+          <div class="gl-empty">
+
+            <strong>
+              GAME LEADERS
+            </strong>
+
+            <span>
+              No NFL games available
+            </span>
+
+          </div>
+        `;
+      }
+
+
+      /*
+       * ========================================================
+       * FAVORITE
+       * ========================================================
+       */
+
+      const favorite =
+        String(
+          attrs.favorite_team ||
+          ""
+        )
+          .trim()
+          .toUpperCase();
+
+
+      const preferFavorite =
+        truthy(
+          variables.prefer_favorite
+        );
+
+
+      /*
+       * ========================================================
+       * TEAM LEADER DATA CHECK
+       * ========================================================
+       */
+
+      const getTeamLeaders = event => {
+
+        const comp =
+          event?.competitions?.[0] ||
+          {};
+
+
+        const leaders =
+          comp?.team_leaders;
+
+
+        if (
+          !leaders ||
+          typeof leaders !== "object"
+        ) {
+          return null;
+        }
+
+
+        return leaders;
+      };
+
+
+      const sideHasData = side => {
+
+        if (
+          !side ||
+          typeof side !== "object"
+        ) {
+          return false;
+        }
+
+
+        return [
+          "passing",
+          "rushing",
+          "receiving",
+          "sacks",
+          "tackles"
+        ].some(
+          category =>
+            side?.[category] &&
+            typeof side[category] === "object"
+        );
+      };
+
+
+      const eventHasLeaderData = event => {
+
+        const leaders =
+          getTeamLeaders(
+            event
+          );
+
+
+        if (!leaders)
+          return false;
+
+
+        return (
+          sideHasData(
+            leaders.away
+          ) ||
+          sideHasData(
+            leaders.home
+          )
+        );
+      };
+
+
+      /*
+       * ========================================================
+       * SELECT BEST GAME
+       *
+       * Priority:
+       * 1. Game actually containing team_leaders
+       * 2. Favorite team's game
+       * 3. Live
+       * 4. Final
+       * 5. Most recent
+       *
+       * Upcoming games intentionally have null team leaders,
+       * so they must not beat a completed/live game.
+       * ========================================================
+       */
+
+      const eventRank = event => {
+
+        const comp =
+          event?.competitions?.[0] ||
+          {};
+
+
+        const teams =
+          getTeams(
+            comp
+          );
+
+
+        const state =
+          String(
+            comp?.status?.type?.state ||
+            event?.status?.type?.state ||
+            ""
+          ).toLowerCase();
+
+
+        const hasFavorite =
+          !!favorite &&
+          teams.some(
+            competitor =>
+              String(
+                competitor?.team?.abbreviation ||
+                ""
+              ).toUpperCase() ===
+              favorite
+          );
+
+
+        const hasLeaders =
+          eventHasLeaderData(
+            event
+          );
+
+
+        let score = 0;
+
+
+        /*
+         * Leader data is mandatory for this card.
+         */
+
+        if (hasLeaders)
+          score += 10000;
+
+
+        /*
+         * Favorite only matters after usable data exists.
+         */
+
+        if (
+          hasLeaders &&
+          preferFavorite &&
+          hasFavorite
+        ) {
+          score += 2000;
+        }
+
+
+        if (state === "in")
+          score += 800;
+
+        else if (state === "post")
+          score += 600;
+
+        else if (state === "pre")
+          score += 100;
+
+
+        return score;
+      };
+
+
+      const sorted =
+        [...events].sort(
+          (a, b) => {
+
+            const rankDiff =
+              eventRank(b) -
+              eventRank(a);
+
+
+            if (rankDiff)
+              return rankDiff;
+
+
+            return (
+              new Date(
+                b?.date || 0
+              ) -
+              new Date(
+                a?.date || 0
+              )
+            );
+
+          }
+        );
+
+
+      const event =
+        sorted[0];
+
+
+      const comp =
+        event?.competitions?.[0] ||
+        {};
+
+
+      const away =
+        getAway(
+          comp
+        );
+
+
+      const home =
+        getHome(
+          comp
+        );
+
+
+      const teamLeaders =
+        comp?.team_leaders || {};
+
+
+      const awayLeaders =
+        teamLeaders?.away || {};
+
+
+      const homeLeaders =
+        teamLeaders?.home || {};
+
+
+      /*
+       * ========================================================
+       * STATUS
+       * ========================================================
+       */
+
+      const status =
+        comp?.status ||
+        event?.status ||
+        {};
+
+
+      const state =
+        String(
+          status?.type?.state ||
+          ""
+        ).toLowerCase();
+
+
+      const statusText =
+        state === "in"
+          ? (
+              status?.type?.shortDetail ||
+              "LIVE"
+            )
+          : state === "post"
+            ? "FINAL"
+            : (
+                status?.type?.shortDetail ||
+                ""
+              );
+
+
+      /*
+       * ========================================================
+       * CATEGORY CONFIG
+       * ========================================================
+       */
+
+      const categories = [
+
+        {
+          key: "passing",
+          label: "Passing<br>Yards"
+        },
+
+        {
+          key: "rushing",
+          label: "Rushing<br>Yards"
+        },
+
+        {
+          key: "receiving",
+          label: "Receiving<br>Yards"
+        },
+
+        {
+          key: "sacks",
+          label: "Sacks"
+        },
+
+        {
+          key: "tackles",
+          label: "Tackles"
+        }
+
+      ];
+
+
+      /*
+       * ========================================================
+       * NORMALIZE INTEGRATION LEADER
+       *
+       * New integration format:
+       *
+       * {
+       *   name,
+       *   short_name,
+       *   position,
+       *   headshot,
+       *   value,
+       *   detail,
+       *   team_id,
+       *   team_abbreviation
+       * }
+       * ========================================================
+       */
+
+      const normalizeLeader = leader => {
+
+        if (
+          !leader ||
+          typeof leader !== "object"
+        ) {
+
+          return {
+            available: false,
+            name: "None",
+            position: "",
+            headshot: "",
+            value: "–",
+            detail: ""
+          };
+        }
+
+
+        return {
+
+          available: true,
+
+          name:
+            leader.short_name ||
+            leader.name ||
+            "Unknown",
+
+          position:
+            leader.position ||
+            "",
+
+          headshot:
+            leader.headshot ||
+            "",
+
+          value:
+            leader.value ??
+            "–",
+
+          detail:
+            leader.detail ||
+            ""
+
+        };
+      };
+
+
+      /*
+       * ========================================================
+       * TEAM HEADER
+       * ========================================================
+       */
+
+      const renderTeam = (
+        competitor,
+        side
+      ) => {
+
+        const abbreviation =
+          teamAbbr(
+            competitor
+          );
+
+
+        const logo =
+          getLogo(
+            competitor?.team
+          );
+
+
+        if (side === "left") {
+
+          return `
+            <div class="gl-team gl-team-left">
+
+              <div class="gl-team-logo">
+
+                ${
+                  logo
+                    ? `
+                      <img
+                        src="${esc(logo)}"
+                        alt="${esc(abbreviation)}"
+                      >
+                    `
+                    : `
+                      <span>
+                        ${esc(abbreviation)}
+                      </span>
+                    `
+                }
+
+              </div>
+
+
+              <strong>
+                ${esc(abbreviation)}
+              </strong>
+
+            </div>
+          `;
+        }
+
+
+        return `
+          <div class="gl-team gl-team-right">
+
+            <strong>
+              ${esc(abbreviation)}
+            </strong>
+
+
+            <div class="gl-team-logo">
+
+              ${
+                logo
+                  ? `
+                    <img
+                      src="${esc(logo)}"
+                      alt="${esc(abbreviation)}"
+                    >
+                  `
+                  : `
+                    <span>
+                      ${esc(abbreviation)}
+                    </span>
+                  `
+              }
+
+            </div>
+
+          </div>
+        `;
+      };
+
+
+      /*
+       * ========================================================
+       * PLAYER
+       * ========================================================
+       */
+
+      const renderPlayer = (
+        rawLeader,
+        side
+      ) => {
+
+        const player =
+          normalizeLeader(
+            rawLeader
+          );
+
+
+        return `
+          <div
+            class="
+              gl-player
+              gl-player-${side}
+              ${
+                player.available
+                  ? ""
+                  : "gl-player-empty"
+              }
+            "
+          >
+
+
+            <div class="gl-player-top">
+
+
+              ${
+                side === "right"
+                  ? `
+                    <div class="gl-value">
+                      ${esc(player.value)}
+                    </div>
+                  `
+                  : ""
+              }
+
+
+              <div
+                class="
+                  gl-headshot
+                  ${
+                    player.headshot
+                      ? ""
+                      : "gl-placeholder"
+                  }
+                "
+              >
+
+                ${
+                  player.headshot
+                    ? `
+                      <img
+                        src="${esc(player.headshot)}"
+                        alt="${esc(player.name)}"
+                      >
+                    `
+                    : `
+                      <ha-icon
+                        icon="mdi:account"
+                      >
+                      </ha-icon>
+                    `
+                }
+
+              </div>
+
+
+              ${
+                side === "left"
+                  ? `
+                    <div class="gl-value">
+                      ${esc(player.value)}
+                    </div>
+                  `
+                  : ""
+              }
+
+
+            </div>
+
+
+            <div class="gl-player-name">
+
+              <span>
+                ${esc(player.name)}
+              </span>
+
+
+              ${
+                player.position
+                  ? `
+                    <small>
+                      ${esc(player.position)}
+                    </small>
+                  `
+                  : ""
+              }
+
+            </div>
+
+
+            <div
+              class="
+                gl-player-detail
+                ${
+                  player.detail
+                    ? ""
+                    : "gl-detail-empty"
+                }
+              "
+            >
+
+              ${
+                player.detail
+                  ? esc(player.detail)
+                  : "&nbsp;"
+              }
+
+            </div>
+
+
+          </div>
+        `;
+      };
+
+
+      /*
+       * ========================================================
+       * CATEGORY ROW
+       * ========================================================
+       */
+
+      const renderCategory = config => {
+
+        return `
+          <div class="gl-stat-row">
+
+
+            ${renderPlayer(
+              awayLeaders?.[
+                config.key
+              ],
+              "left"
+            )}
+
+
+            <div class="gl-stat-label">
+              ${config.label}
+            </div>
+
+
+            ${renderPlayer(
+              homeLeaders?.[
+                config.key
+              ],
+              "right"
+            )}
+
+
+          </div>
+        `;
+      };
+
+
+      /*
+       * ========================================================
+       * BOX SCORE URL
+       * ========================================================
+       */
+
+      const links = [
+
+        ...arr(
+          event?.links
+        ),
+
+        ...arr(
+          comp?.links
+        )
+
+      ];
+
+
+      const boxScore =
+        links.find(
+          link => {
+
+            const rel =
+              arr(
+                link?.rel
+              )
+                .join(" ")
+                .toLowerCase();
+
+
+            const text =
+              String(
+                link?.text ||
+                link?.shortText ||
+                ""
+              )
+                .toLowerCase();
+
+
+            const href =
+              String(
+                link?.href ||
+                ""
+              )
+                .toLowerCase();
+
+
+            return (
+              rel.includes(
+                "boxscore"
+              ) ||
+              text.includes(
+                "box score"
+              ) ||
+              href.includes(
+                "boxscore"
+              )
+            );
+
+          }
+        );
+
+
+      /*
+       * ========================================================
+       * NO LEADER DATA
+       * ========================================================
+       */
+
+      const hasLeaderData =
+        eventHasLeaderData(
+          event
+        );
+
+
+      /*
+       * ========================================================
+       * OUTPUT
+       * ========================================================
+       */
+
+      return `
+        <div class="gl-shell">
+
+
+          <!-- HEADER -->
+
+          <div class="gl-header">
+
+
+            <div>
+
+              <div class="gl-title">
+                GAME LEADERS
+              </div>
+
+
+              ${
+                statusText
+                  ? `
+                    <div
+                      class="
+                        gl-status
+                        ${
+                          state === "in"
+                            ? "gl-status-live"
+                            : ""
+                        }
+                      "
+                    >
+                      ${esc(statusText)}
+                    </div>
+                  `
+                  : ""
+              }
+
+            </div>
+
+
+            ${
+              !hasLeaderData
+                ? `
+                  <div class="gl-data-note">
+                    Waiting for box score
+                  </div>
+                `
+                : ""
+            }
+
+
+          </div>
+
+
+          <div class="gl-divider">
+          </div>
+
+
+          <!-- TEAMS -->
+
+          <div class="gl-team-row">
+
+            ${renderTeam(
+              away,
+              "left"
+            )}
+
+            ${renderTeam(
+              home,
+              "right"
+            )}
+
+          </div>
+
+
+          <div class="gl-divider gl-team-divider">
+          </div>
+
+
+          <!-- LEADERS -->
+
+          <div class="gl-leaders">
+
+            ${
+              categories
+                .map(
+                  renderCategory
+                )
+                .join("")
+            }
+
+          </div>
+
+
+          <!-- BOX SCORE -->
+
+          ${
+            boxScore?.href
+              ? `
+                <a
+                  class="gl-boxscore"
+                  href="${esc(boxScore.href)}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Full Box Score
+                </a>
+              `
+              : ""
+          }
+
+
+        </div>
+      `;
+    ]]]
+
+
+card_mod:
+  style: |
+
+    /*
+     * ==========================================================
+     * SHELL
+     * ==========================================================
+     */
+
+    .gl-shell {
+      width: 100%;
+
+      min-width: 0;
+
+      padding:
+        20px 22px 16px;
+
+      box-sizing:
+        border-box;
+
+      color:
+        var(--primary-text-color);
+
+      background:
+        var(
+          --ha-card-background,
+          var(--card-background-color)
+        );
+    }
+
+
+
+    /*
+     * ==========================================================
+     * HEADER
+     * ==========================================================
+     */
+
+    .gl-header {
+      display: flex;
+
+      align-items: flex-start;
+
+      justify-content: space-between;
+
+      gap: 12px;
+    }
+
+
+    .gl-title {
+      color:
+        var(--primary-text-color);
+
+      font-size: 20px;
+
+      font-weight: 950;
+
+      line-height: 1;
+
+      letter-spacing: -.35px;
+
+      text-align: left;
+    }
+
+
+    .gl-status {
+      margin-top: 5px;
+
+      color:
+        var(--secondary-text-color);
+
+      font-size: 9px;
+
+      font-weight: 850;
+
+      letter-spacing: 1px;
+
+      text-transform: uppercase;
+    }
+
+
+    .gl-status-live {
+      color:
+        var(--error-color);
+    }
+
+
+    .gl-data-note {
+      padding:
+        5px 8px;
+
+      border-radius: 999px;
+
+      color:
+        var(--secondary-text-color);
+
+      background:
+        var(--secondary-background-color);
+
+      border:
+        1px solid
+        var(--divider-color);
+
+      font-size: 8px;
+
+      font-weight: 800;
+
+      white-space: nowrap;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * DIVIDERS
+     * ==========================================================
+     */
+
+    .gl-divider {
+      width: 100%;
+
+      height: 1px;
+
+      margin:
+        17px 0;
+
+      background:
+        var(--divider-color);
+    }
+
+
+    .gl-team-divider {
+      margin-bottom: 0;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * TEAM HEADER
+     * ==========================================================
+     */
+
+    .gl-team-row {
+      display: grid;
+
+      grid-template-columns:
+        1fr 1fr;
+
+      align-items: center;
+
+      min-height: 54px;
+    }
+
+
+    .gl-team {
+      min-width: 0;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 10px;
+    }
+
+
+    .gl-team-left {
+      justify-content: flex-start;
+    }
+
+
+    .gl-team-right {
+      justify-content: flex-end;
+    }
+
+
+    .gl-team strong {
+      color:
+        var(--primary-text-color);
+
+      font-size: 18px;
+
+      font-weight: 950;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * TEAM LOGO
+     * ==========================================================
+     */
+
+    .gl-team-logo {
+      width: 50px;
+      height: 42px;
+
+      flex: 0 0 auto;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+    }
+
+
+    .gl-team-logo img {
+      width: 48px;
+      height: 40px;
+
+      object-fit: contain;
+    }
+
+
+    .gl-team-logo span {
+      color:
+        var(--secondary-text-color);
+
+      font-size: 10px;
+
+      font-weight: 900;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * STAT ROW
+     * ==========================================================
+     */
+
+    .gl-stat-row {
+      display: grid;
+
+      grid-template-columns:
+        minmax(0,1fr)
+        96px
+        minmax(0,1fr);
+
+      align-items: center;
+
+      gap: 10px;
+
+      min-height: 126px;
+
+      padding:
+        12px 0;
+
+      box-sizing: border-box;
+
+      border-bottom:
+        1px solid
+        var(--divider-color);
+    }
+
+
+
+    /*
+     * ==========================================================
+     * CENTER LABEL
+     * ==========================================================
+     */
+
+    .gl-stat-label {
+      color:
+        var(--primary-text-color);
+
+      font-size: 16px;
+
+      font-weight: 900;
+
+      line-height: 1.25;
+
+      text-align: center;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * PLAYER
+     * ==========================================================
+     */
+
+    .gl-player {
+      min-width: 0;
+    }
+
+
+    .gl-player-right {
+      text-align: right;
+    }
+
+
+    .gl-player-top {
+      display: flex;
+
+      align-items: center;
+
+      gap: 10px;
+    }
+
+
+    .gl-player-left .gl-player-top {
+      justify-content: flex-start;
+    }
+
+
+    .gl-player-right .gl-player-top {
+      justify-content: flex-end;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * HEADSHOT
+     * ==========================================================
+     */
+
+    .gl-headshot {
+      width: 58px;
+      height: 58px;
+
+      flex:
+        0 0 58px;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      overflow: hidden;
+
+      border-radius: 50%;
+
+      background:
+        var(--secondary-background-color);
+
+      border:
+        1px solid
+        var(--divider-color);
+    }
+
+
+    .gl-headshot img {
+      width: 100%;
+      height: 100%;
+
+      object-fit: cover;
+
+      object-position:
+        center top;
+    }
+
+
+    .gl-placeholder {
+      color:
+        var(--secondary-text-color);
+    }
+
+
+    .gl-placeholder ha-icon {
+      --mdc-icon-size: 46px;
+
+      opacity: .52;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * VALUE
+     * ==========================================================
+     */
+
+    .gl-value {
+      min-width: 27px;
+
+      color:
+        var(--primary-text-color);
+
+      font-size: 27px;
+
+      font-weight: 950;
+
+      line-height: 1;
+
+      font-variant-numeric:
+        tabular-nums;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * NAME + POSITION
+     * ==========================================================
+     */
+
+    .gl-player-name {
+      min-width: 0;
+
+      margin-top: 7px;
+
+      color:
+        var(--primary-text-color);
+
+      font-size: 17px;
+
+      font-weight: 650;
+
+      line-height: 1.15;
+
+      white-space: nowrap;
+
+      overflow: hidden;
+
+      text-overflow: ellipsis;
+    }
+
+
+    .gl-player-name small {
+      margin-left: 4px;
+
+      color:
+        var(--secondary-text-color);
+
+      font-size: .88em;
+
+      font-weight: 500;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * DETAIL
+     * ==========================================================
+     */
+
+    .gl-player-detail {
+      min-height: 17px;
+
+      margin-top: 4px;
+
+      color:
+        var(--secondary-text-color);
+
+      font-size: 14px;
+
+      font-weight: 450;
+
+      line-height: 1.15;
+    }
+
+
+    .gl-detail-empty {
+      visibility: hidden;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * EMPTY PLAYER
+     * ==========================================================
+     */
+
+    .gl-player-empty .gl-value,
+    .gl-player-empty .gl-player-name {
+      color:
+        var(--secondary-text-color);
+    }
+
+
+
+    /*
+     * ==========================================================
+     * BOX SCORE
+     * ==========================================================
+     */
+
+    .gl-boxscore {
+      display: block;
+
+      width: fit-content;
+
+      margin:
+        15px auto 0;
+
+      color:
+        var(--primary-color);
+
+      font-size: 15px;
+
+      font-weight: 800;
+
+      text-decoration: none;
+
+      pointer-events: auto;
+    }
+
+
+    .gl-boxscore:hover {
+      text-decoration: underline;
+    }
+
+
+
+    /*
+     * ==========================================================
+     * EMPTY CARD
+     * ==========================================================
+     */
+
+    .gl-empty {
+      min-height: 120px;
+
+      display: flex;
+
+      flex-direction: column;
+
+      align-items: center;
+
+      justify-content: center;
+
+      gap: 6px;
+
+      padding: 18px;
+
+      color:
+        var(--primary-text-color);
+    }
+
+
+    .gl-empty span {
+      color:
+        var(--secondary-text-color);
+    }
+
+
+
+    /*
+     * ==========================================================
+     * NARROW SECTION
+     * ==========================================================
+     */
+
+    @container (max-width: 520px) {
+
+      .gl-shell {
+        padding:
+          17px 15px 14px;
+      }
+
+
+      .gl-title {
+        font-size: 18px;
+      }
+
+
+      .gl-divider {
+        margin:
+          14px 0;
+      }
+
+
+      .gl-team-row {
+        min-height: 48px;
+      }
+
+
+      .gl-team-logo {
+        width: 42px;
+        height: 36px;
+      }
+
+
+      .gl-team-logo img {
+        width: 40px;
+        height: 34px;
+      }
+
+
+      .gl-team strong {
+        font-size: 16px;
+      }
+
+
+      .gl-stat-row {
+        grid-template-columns:
+          minmax(0,1fr)
+          78px
+          minmax(0,1fr);
+
+        gap: 7px;
+
+        min-height: 112px;
+
+        padding:
+          10px 0;
+      }
+
+
+      .gl-stat-label {
+        font-size: 14px;
+      }
+
+
+      .gl-headshot {
+        width: 50px;
+        height: 50px;
+
+        flex-basis: 50px;
+      }
+
+
+      .gl-placeholder ha-icon {
+        --mdc-icon-size: 39px;
+      }
+
+
+      .gl-value {
+        min-width: 23px;
+
+        font-size: 23px;
+      }
+
+
+      .gl-player-top {
+        gap: 6px;
+      }
+
+
+      .gl-player-name {
+        font-size: 14px;
+      }
+
+
+      .gl-player-detail {
+        font-size: 12px;
+      }
+
+    }
+
+```
+
+</details>
+
+---
+
 ## 🛠️ Troubleshooting
 
 ### Next Game card shows no favorite

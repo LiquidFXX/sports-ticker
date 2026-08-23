@@ -1,0 +1,114 @@
+name: Finalize NFL docs and cleanup
+
+on:
+  push:
+    paths:
+      - '.github/workflows/nfl-docs-finalize.yml'
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Update NFL example documentation
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('examples/NFL.md')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  'The NFL examples use the raw scoreboard sensor and the favorite-team next-game sensor:',
+                  'The NFL examples use the raw scoreboard sensor and the favorite-team next-game sensor. The raw NFL scoreboard is also enriched with per-team box-score leaders for live and completed games:'
+              ),
+              (
+                  '| `sensor.espn_nfl_scoreboard_raw` | Full NFL scoreboard source |',
+                  '| `sensor.espn_nfl_scoreboard_raw` | Full NFL scoreboard, highlights, alerts, and per-team game leaders |'
+              ),
+              (
+                  '''| Layout | Best For | Sensor Used |\n| --- | --- | --- |\n| 1. Favorite Team Next Game | A polished featured card for the configured favorite team | `sensor.espn_nfl_next_game` |\n| 2. Scrolling Sports Ticker | Compact ESPN-style scrolling scores; can mix NFL with other enabled sports | NFL and other raw scoreboard sensors |\n| 3. NFL Game Highlights | Playable ESPN highlights with score and recap | `sensor.espn_nfl_scoreboard_raw` |''',
+                  '''| Layout | Best For | Sensor Used |\n| --- | --- | --- |\n| 1. Favorite Team Next Game | Featured upcoming game for the configured favorite NFL team | `sensor.espn_nfl_next_game` |\n| 2. Scrolling Sports Ticker | ESPN-style scrolling scores, schedules, live status, and alerts | `sensor.espn_nfl_scoreboard_raw` and other enabled scoreboard sensors |\n| 3. Featured Game Highlight | One featured playable ESPN highlight with score and recap | `sensor.espn_nfl_scoreboard_raw` |\n| 4. NFL Highlights Rail | Featured completed-game highlight plus three playable videos and expandable extras | `sensor.espn_nfl_scoreboard_raw` |\n| 5. Conditional Alert Cards | Red Zone, Upset Watch, and Touchdown alerts during live games | `sensor.espn_nfl_scoreboard_raw` |\n| 6. Game Leaders | Away/home passing, rushing, receiving, sacks, and tackles leaders | `sensor.espn_nfl_scoreboard_raw` |'''
+              ),
+              (
+                  '## 3. NFL Game Highlights',
+                  '## 3. Featured Game Highlight'
+              ),
+              (
+                  '''## 4. League Highlights\n\nA featured next-game card that automatically follows the NFL favorite selected in Sports Ticker. It shows the favorite team, opponent, kickoff date and time, venue, broadcast, week, and whether the game is home or away.\n\n<img width="451"  alt="image" src="https://github.com/user-attachments/assets/173bf784-d5a8-4d1b-83ee-bcc547040360" />\n\n\n> No team abbreviation needs to be hard-coded. The card reads the configured favorite directly from `sensor.espn_nfl_next_game`.''',
+                  '''## 4. NFL Highlights Rail\n\nA wide, TV-style NFL highlights rail built from `sensor.espn_nfl_scoreboard_raw`. It automatically finds playable ESPN highlight videos, shows one featured highlight with the final score and team branding, keeps the next three videos playable directly inside the card, and expands additional videos with **View All Highlights**.\n\n<img src="images/NFL/nfl_highlights_rail.webp" alt="NFL Highlights Rail card example" width="520">\n\n> **New user notes**\n> - Requires the **Sports Ticker** integration, `custom:button-card`, and `card-mod`.\n> - `preview_items: 4` shows one featured video plus three smaller playable highlights.\n> - `max_items: 16` controls the maximum number of playable videos available through **View All Highlights**.\n> - Set `prefer_favorite_game: true` to prioritize a playable highlight involving the configured NFL favorite team.\n> - Each smaller highlight plays directly inside the card; starting one video pauses the other videos.\n> - **View All Highlights** appears when more than four playable ESPN highlights are available and expands them inside the card.\n> - ESPN links remain available as a fallback when you want to open the highlight on ESPN.\n> - The card uses the direct video sources already exposed in `sensor.espn_nfl_scoreboard_raw`; it does not require a separate media entity.\n\nThe reusable card is also stored in [`nfl_highlights_rail_card.yaml`](nfl_highlights_rail_card.yaml).'''
+              ),
+              (
+                  '''## 6. Favorite Team Next Game\n\nA featured next-game card that automatically follows the NFL favorite selected in Sports Ticker. It shows the favorite team, opponent, kickoff date and time, venue, broadcast, week, and whether the game is home or away.\n\n<img height="547" alt="image" src="https://github.com/user-attachments/assets/30397392-5f8f-489d-a6e9-1a79694d106e" />\n\n> No team abbreviation needs to be hard-coded. The card reads the configured favorite directly from `sensor.espn_nfl_next_game`.''',
+                  '''## 6. Game Leaders\n\nA side-by-side NFL game leaders card using the enriched `team_leaders` data in `sensor.espn_nfl_scoreboard_raw`. It shows the leading passer, rusher, receiver, sack leader, and tackle leader for both teams and prefers the configured favorite team's game when usable leader data is available.\n\n<img height="547" alt="NFL Game Leaders card example" src="https://github.com/user-attachments/assets/30397392-5f8f-489d-a6e9-1a79694d106e" />\n\n> Leader data is available for live and completed games when ESPN exposes a box score. Upcoming games can legitimately show **Waiting for box score** until those statistics exist.'''
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'Expected NFL.md block not found:\n{old[:180]}')
+              text = text.replace(old, new, 1)
+
+          required = [
+              '## 3. Featured Game Highlight',
+              '## 4. NFL Highlights Rail',
+              '## 5. Conditional Alert Cards',
+              '## 6. Game Leaders',
+              'images/NFL/nfl_highlights_rail.webp',
+              'nfl_highlights_rail_card.yaml',
+          ]
+          missing = [marker for marker in required if marker not in text]
+          if missing:
+              raise SystemExit(f'Missing expected markers after update: {missing}')
+
+          path.write_text(text)
+          PY
+
+          git diff --check
+
+      - name: Remove one-time workflow and commit docs
+        shell: bash
+        run: |
+          rm -f .github/workflows/nfl-docs-finalize.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m 'Finalize NFL example documentation'
+            git push origin HEAD:main
+          fi
+
+      - name: Close temporary documentation issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          for issue in 12 15 16; do
+            gh issue close "$issue" --repo LiquidFXX/sports-ticker --reason completed >/dev/null 2>&1 || true
+          done
+
+      - name: Remove obsolete branches
+        shell: bash
+        run: |
+          for branch in \
+            docs/nfl-highlights-rail-trigger \
+            feature/nfl-favorite-next-game \
+            release/v0.0.19
+          do
+            git push origin --delete "$branch" || true
+          done

@@ -1,1 +1,1 @@
-trigger NFL.md cleanup
+finalize NFL examples documentation

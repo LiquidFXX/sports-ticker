@@ -1,0 +1,71 @@
+name: Finalize NFL Team Leaders
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/nfl-team-leaders-finalize-once.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply final cache and docs fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('custom_components/sports_ticker/coordinator.py')
+          text = path.read_text()
+
+          old = '''            cached = get_event_team_leaders(previous_events.get(event_id))\n\n            # Future games do not have meaningful box-score leaders yet.\n            if state == "pre":\n                continue\n\n            # Final games are immutable; reuse the persisted enriched payload.\n            if state == "post" and team_leaders_have_data(cached):\n                competition["team_leaders"] = cached\n                continue\n'''
+          new = '''            cached_event = previous_events.get(event_id)\n            cached = get_event_team_leaders(cached_event)\n            cached_status = (\n                cached_event.get("status")\n                if isinstance(cached_event, dict)\n                else None\n            )\n            if not isinstance(cached_status, dict) and isinstance(cached_event, dict):\n                cached_competitions = cached_event.get("competitions")\n                if isinstance(cached_competitions, list) and cached_competitions:\n                    cached_competition = cached_competitions[0]\n                    if isinstance(cached_competition, dict):\n                        cached_status = cached_competition.get("status")\n            cached_status_type = (\n                cached_status.get("type")\n                if isinstance(cached_status, dict)\n                else {}\n            )\n            cached_state = (\n                str(cached_status_type.get("state") or "").lower()\n                if isinstance(cached_status_type, dict)\n                else ""\n            )\n\n            # Future games do not have meaningful box-score leaders yet.\n            if state == "pre":\n                continue\n\n            # Only reuse a final result that was itself fetched after the game\n            # was final. A cached live snapshot must get one final refresh.\n            if (\n                state == "post"\n                and cached_state == "post"\n                and team_leaders_have_data(cached)\n            ):\n                competition["team_leaders"] = cached\n                continue\n'''
+          if old not in text:
+              raise SystemExit('Could not find NFL cache block')
+          text = text.replace(old, new, 1)
+          path.write_text(text)
+
+          readme = Path('README.md')
+          doc = readme.read_text()
+          doc = doc.replace(
+              '''            rushing: {}\n            receiving: {}\n            sacks: {}\n            tackles: {}\n          home:\n            passing: {}\n            rushing: {}\n            receiving: {}\n            sacks: {}\n            tackles: {}''',
+              '''            rushing: null\n            receiving: null\n            sacks: null\n            tackles: null\n          home:\n            passing: null\n            rushing: null\n            receiving: null\n            sacks: null\n            tackles: null''',
+              1,
+          )
+
+          release_anchor = '''## 🏈 NFL card showcase'''
+          release_block = '''## 🚧 In development for v0.20.2\n\n- 🏈 **Per-team NFL game leaders**\n  - Adds `team_leaders.away` and `team_leaders.home` to NFL competition payloads\n  - Uses ESPN game summary / box-score player statistics rather than guessing from the overall `leaders` array\n  - Includes passing yards, rushing yards, receiving yards, sacks, and tackles with player details and useful secondary stats\n  - Keeps the existing ESPN `leaders` data unchanged for backward compatibility\n  - Uses cached final leaders to avoid repeatedly fetching completed-game summaries\n\n---\n\n## 🏈 NFL card showcase'''
+          if '## 🚧 In development for v0.20.2' not in doc:
+              if release_anchor not in doc:
+                  raise SystemExit('Could not find NFL showcase anchor')
+              doc = doc.replace(release_anchor, release_block, 1)
+
+          readme.write_text(doc)
+          PY
+
+      - name: Validate Python and tests
+        run: |
+          python -m compileall -q custom_components/sports_ticker
+          python -m unittest discover -s tests -v
+
+      - name: Commit and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/nfl-team-leaders-finalize-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add custom_components/sports_ticker/coordinator.py README.md .github/workflows/nfl-team-leaders-finalize-once.yml
+          git commit -m "Finalize NFL team leaders enrichment"
+          git push

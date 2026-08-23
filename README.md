@@ -367,6 +367,40 @@ source: espn
 
 The `cfp` list can be empty early in the season before the College Football Playoff committee publishes its first rankings. `ap_top_25` and `coaches_poll` are populated whenever ESPN provides those polls.
 
+### NFL per-team game leaders
+
+NFL scoreboard events now keep ESPN's existing competition-level `leaders` array and also add normalized away/home leaders from the game's ESPN summary box score. This is designed for side-by-side GAME LEADERS cards.
+
+```yaml
+events:
+  - id: "401873286"
+    competitions:
+      - leaders: []  # Existing ESPN leaders are unchanged
+        team_leaders:
+          away:
+            passing:
+              name: Aidan O'Connell
+              short_name: A. O'Connell
+              position: QB
+              headshot: https://...
+              value: 166
+              detail: 15/24 CMP/ATT
+              team_id: "13"
+              team_abbreviation: LV
+            rushing: {}
+            receiving: {}
+            sacks: {}
+            tackles: {}
+          home:
+            passing: {}
+            rushing: {}
+            receiving: {}
+            sacks: {}
+            tackles: {}
+```
+
+The five normalized categories are `passing`, `rushing`, `receiving`, `sacks`, and `tackles`. Missing ESPN data is exposed as `null` rather than borrowing a player from the other team. Passing detail contains completions/attempts when available; rushing detail carries attempts, receiving detail carries receptions, and tackles detail carries solo tackles.
+
 ### Main scoreboard attributes
 
 ```yaml

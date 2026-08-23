@@ -44,6 +44,17 @@
 
 ---
 
+## 🚧 In development for v0.20.2
+
+- 🏈 **Per-team NFL game leaders**
+  - Adds `team_leaders.away` and `team_leaders.home` to NFL competition payloads
+  - Uses ESPN game summary / box-score player statistics rather than guessing from the overall `leaders` array
+  - Includes passing yards, rushing yards, receiving yards, sacks, and tackles with player details and useful secondary stats
+  - Keeps the existing ESPN `leaders` data unchanged for backward compatibility
+  - Uses cached final leaders to avoid repeatedly fetching completed-game summaries
+
+---
+
 ## 🏈 NFL card showcase
 
 The NFL examples are being rebuilt around cards that are useful day-to-day. The current set includes a favorite-team next-game card, a multi-sport scrolling ticker, and a playable ESPN highlights card.
@@ -387,16 +398,16 @@ events:
               detail: 15/24 CMP/ATT
               team_id: "13"
               team_abbreviation: LV
-            rushing: {}
-            receiving: {}
-            sacks: {}
-            tackles: {}
+            rushing: null
+            receiving: null
+            sacks: null
+            tackles: null
           home:
-            passing: {}
-            rushing: {}
-            receiving: {}
-            sacks: {}
-            tackles: {}
+            passing: null
+            rushing: null
+            receiving: null
+            sacks: null
+            tackles: null
 ```
 
 The five normalized categories are `passing`, `rushing`, `receiving`, `sacks`, and `tackles`. Missing ESPN data is exposed as `null` rather than borrowing a player from the other team. Passing detail contains completions/attempts when available; rushing detail carries attempts, receiving detail carries receptions, and tackles detail carries solo tackles.

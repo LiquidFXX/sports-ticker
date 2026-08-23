@@ -310,14 +310,41 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 else ""
             )
 
-            cached = get_event_team_leaders(previous_events.get(event_id))
+            cached_event = previous_events.get(event_id)
+            cached = get_event_team_leaders(cached_event)
+            cached_status = (
+                cached_event.get("status")
+                if isinstance(cached_event, dict)
+                else None
+            )
+            if not isinstance(cached_status, dict) and isinstance(cached_event, dict):
+                cached_competitions = cached_event.get("competitions")
+                if isinstance(cached_competitions, list) and cached_competitions:
+                    cached_competition = cached_competitions[0]
+                    if isinstance(cached_competition, dict):
+                        cached_status = cached_competition.get("status")
+            cached_status_type = (
+                cached_status.get("type")
+                if isinstance(cached_status, dict)
+                else {}
+            )
+            cached_state = (
+                str(cached_status_type.get("state") or "").lower()
+                if isinstance(cached_status_type, dict)
+                else ""
+            )
 
             # Future games do not have meaningful box-score leaders yet.
             if state == "pre":
                 continue
 
-            # Final games are immutable; reuse the persisted enriched payload.
-            if state == "post" and team_leaders_have_data(cached):
+            # Only reuse a final result that was itself fetched after the game
+            # was final. A cached live snapshot must get one final refresh.
+            if (
+                state == "post"
+                and cached_state == "post"
+                and team_leaders_have_data(cached)
+            ):
                 competition["team_leaders"] = cached
                 continue
 

@@ -1,2 +1,0 @@
-finalize NFL examples documentation
-trigger: 2026-08-23T01:27Z

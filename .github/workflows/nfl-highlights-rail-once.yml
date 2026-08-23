@@ -45,7 +45,7 @@ jobs:
 | 2. Scrolling Sports Ticker | Compact ESPN-style scrolling scores; can mix NFL with other enabled sports | NFL and other raw scoreboard sensors |
 | 3. Featured Game Highlight | One featured playable ESPN highlight with score and recap | `sensor.espn_nfl_scoreboard_raw` |
 | 4. NFL Highlights Rail | Featured highlight plus three playable videos and expandable extras | `sensor.espn_nfl_scoreboard_raw` |
-| 5. Conditional Alert Cards | Live-game Red Zone and touchdown alerts | `sensor.espn_nfl_scoreboard_raw` |
+| 5. Conditional Alert Cards | Live-game Red Zone, Upset Watch, and touchdown alerts | `sensor.espn_nfl_scoreboard_raw` |
 | 6. Game Leaders | Away/home passing, rushing, receiving, sacks, and tackles leaders | `sensor.espn_nfl_scoreboard_raw` |'''
           if old_table in text:
               text = text.replace(old_table, new_table, 1)
@@ -201,7 +201,7 @@ A side-by-side NFL game leaders card built from the per-team box-score data now 
 <img height="547" alt="NFL Game Leaders card example" src="{game_leaders_image}" />
 
 > **New user notes**
-> - Requires a Sports Ticker version that exposes `competitions[0].team_leaders` on NFL events.
+> - Requires Sports Ticker `0.20.2-beta.1` or newer, with `competitions[0].team_leaders` available on NFL events.
 > - The integration enriches live and completed NFL games from ESPN's summary/box-score data.
 > - Scheduled games intentionally expose the same stable structure with `null` leaders until box-score data exists.
 > - The card prefers a game that actually contains leader data, then prefers the configured favorite team's game when possible.

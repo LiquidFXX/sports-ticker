@@ -33,8 +33,16 @@ jobs:
           print(manifest['version'])
           PY
           )"
+
+          if [[ "$manifest_version" == *-* ]]; then
+            prerelease="true"
+          else
+            prerelease="false"
+          fi
+
           echo "version=$manifest_version" >> "$GITHUB_OUTPUT"
           echo "tag=v$manifest_version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
       - name: Build HACS release ZIP
         shell: bash
@@ -56,6 +64,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_PRERELEASE: ${{ steps.version.outputs.prerelease }}
         shell: bash
         run: |
           set -euo pipefail
@@ -63,8 +72,17 @@ jobs:
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" sports_ticker.zip --clobber
           else
-            gh release create "$RELEASE_TAG" sports_ticker.zip \
-              --target "$GITHUB_SHA" \
-              --title "$RELEASE_TAG" \
+            release_args=(
+              "$RELEASE_TAG"
+              sports_ticker.zip
+              --target "$GITHUB_SHA"
+              --title "$RELEASE_TAG"
               --generate-notes
+            )
+
+            if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
+              release_args+=(--prerelease)
+            fi
+
+            gh release create "${release_args[@]}"
           fi

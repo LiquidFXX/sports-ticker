@@ -29,8 +29,8 @@ Sports Ticker gives Home Assistant the sports data. The included Lovelace exampl
     <img src="examples/images/NFL/nfl_next_game_card.svg" alt="NFL favorite team next game card" width="31%">
   </a>
   &nbsp;
-  <a href="examples/NFL.md#4-this-week-in-the-nfl">
-    <img src="examples/images/NFL/nfl_this_week_card.svg" alt="NFL this week card" width="31%">
+  <a href="examples/NFL.md">
+    <img src="examples/images/NFL/nfl_this_week_card.svg" alt="NFL weekly card example" width="31%">
   </a>
   &nbsp;
   <a href="examples/CFB.md">

@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0
           ref: main
 
-      - name: Add screenshot and update NFL examples
+      - name: Fold playoff picture into NFL examples
         shell: bash
         run: |
           mkdir -p examples/images/NFL
@@ -75,8 +75,21 @@ jobs:
                   text = text.replace(marker, marker + trouble, 1)
 
           md.write_text(text, encoding='utf-8')
+
+          readme = Path('README.md')
+          readme_text = readme.read_text(encoding='utf-8')
+          readme_text = readme_text.replace(
+              'See **[NFL standings sensor documentation](examples/NFL_STANDINGS.md)** for the full attribute model.',
+              'See **[NFL Standings & Playoff Picture example](examples/NFL.md#7-standings--playoff-picture)** for the card, sensor usage, and troubleshooting notes.'
+          )
+          readme_text = readme_text.replace(
+              '| 🏈 NFL | [Next game, scrolling ticker, highlights, weekly cards, leaders, and more](examples/NFL.md) |\n| 🏈 NFL standings | [Normalized standings and playoff-picture sensor shape](examples/NFL_STANDINGS.md) |',
+              '| 🏈 NFL | [Next game, scrolling ticker, highlights, leaders, standings, playoff picture, and more](examples/NFL.md) |'
+          )
+          readme.write_text(readme_text, encoding='utf-8')
           PY
 
+          rm -f examples/NFL_STANDINGS.md
           rm -f .github/nfl_playoff_picture_docs.b64
           rm -f .github/workflows/nfl-playoff-picture-docs-once.yml
 

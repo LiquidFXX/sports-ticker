@@ -2,7 +2,7 @@
 
 # 🏟️ Sports Ticker for Home Assistant
 
-### Turn ESPN sports data into live Home Assistant scoreboards, tickers, game cards, rankings, highlights, and team-focused dashboards.
+### Turn ESPN sports data into live Home Assistant scoreboards, tickers, game cards, rankings, standings, highlights, and team-focused dashboards.
 
 [![Latest Release](https://img.shields.io/github/v/release/LiquidFXX/sports-ticker?label=Latest%20Release)](https://github.com/LiquidFXX/sports-ticker/releases/latest)
 [![Total Downloads](https://img.shields.io/github/downloads/LiquidFXX/sports-ticker/total?label=Downloads)](https://github.com/LiquidFXX/sports-ticker/releases)
@@ -10,7 +10,7 @@
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Custom%20Integration-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
 [![License](https://img.shields.io/github/license/LiquidFXX/sports-ticker)](LICENSE)
 
-**Stable release:** `v0.20.1`  •  **Current main branch:** `v0.20.2-beta.1`
+**Stable release:** `v0.20.1`  •  **Current prerelease:** `v0.20.3-alpha.1`
 
 </div>
 
@@ -50,6 +50,7 @@ Sports Ticker gives Home Assistant the sports data. The included Lovelace exampl
 | ⭐ **Favorite teams** | Select a favorite team per league and expose it directly to cards and automations |
 | 📅 **Next-game sensors** | Dedicated NFL and College Football next-game entities that follow your configured favorite team |
 | 🏆 **College Football rankings** | AP Top 25, Coaches Poll, CFP rankings, previous rank, trend, records, votes, points, logos, and dropped-out teams |
+| 🏈 **NFL standings & playoff picture** | Normalized AFC/NFC standings, divisions, playoff seeds, wild cards, cut-line helpers, clinch data, favorite-team highlighting, and flat team lists |
 | 📊 **Player / team leaders** | MLB player leader sensors plus NFL per-team game leaders for passing, rushing, receiving, sacks, and tackles |
 | 🎬 **Highlights** | ESPN highlight/video metadata that can power playable game recap cards |
 | 📺 **Scrolling tickers** | Build single-sport or multi-sport ESPN-style tickers with your own speed and theme |
@@ -132,6 +133,49 @@ KC @ BUF
 ```
 
 Useful attributes include kickoff time, opponent, home/away, venue, broadcasts, team logos, season/week, rankings/records where available, and freshness metadata.
+
+### NFL standings and playoff picture
+
+When NFL is enabled:
+
+```text
+sensor.espn_nfl_standings_raw
+```
+
+This sensor uses ESPN's NFL standings hierarchy and exposes a predictable Home Assistant shape for full standings and playoff-race cards.
+
+Top-level helpers include:
+
+```yaml
+season: 2026
+season_type: 2
+season_type_name: Regular Season
+week: 16
+favorite_team: ATL
+updated_at: "..."
+
+conferences:
+  AFC:
+    - ...
+  NFC:
+    - ...
+
+divisions:
+  AFC East:
+    leader: BUF
+    teams:
+      - BUF
+      - MIA
+      - NE
+      - NYJ
+
+teams:
+  - ...
+```
+
+Normalized team rows include ESPN standings data such as record, win percentage, division/conference rank, playoff seed, streak, games back, and clincher information when available. Sports Ticker also exposes clearly labeled derived helpers for division leaders, wild cards, seeds 1–7, playoff cut-line handling, and "in the hunt" displays without fabricating ESPN clinch flags.
+
+See **[NFL standings sensor documentation](examples/NFL_STANDINGS.md)** for the full attribute model.
 
 ### College Football rankings
 
@@ -249,6 +293,7 @@ The `examples/` folder contains complete, copy/paste-oriented dashboard examples
 | Sport | Examples |
 | :--- | :--- |
 | 🏈 NFL | [Next game, scrolling ticker, highlights, weekly cards, leaders, and more](examples/NFL.md) |
+| 🏈 NFL standings | [Normalized standings and playoff-picture sensor shape](examples/NFL_STANDINGS.md) |
 | 🏈 College Football | [Rankings and College Football cards](examples/CFB.md) |
 | ⚾ MLB | [Ticker, schedule, standings-style layouts, stats, and game cards](examples/MLB.md) |
 | 🏀 NBA | [Schedule, ticker, and dashboard cards](examples/NBA.md) |
@@ -292,15 +337,9 @@ This makes it easy to build dashboard indicators or automations around data fres
 
 ## Current development
 
-The stable release is **v0.20.1**. The `main` branch is currently on **v0.20.2-beta.1** with additional NFL game-leader work.
+The stable release is **v0.20.1**. The current prerelease line is **v0.20.3-alpha.1**.
 
-Active development also includes an **NFL standings and playoff-picture data source** on:
-
-```text
-feature/nfl-standings-playoff-picture
-```
-
-That work is being kept separate until it is ready to merge so existing entity IDs and scoreboard behavior remain backward-compatible.
+This alpha adds the normalized NFL standings and playoff-picture source while keeping the existing scoreboard, favorite-team next-game, rankings, leader, and entity IDs backward-compatible.
 
 Future feature lines are planned around seasonal timing, with College Basketball, Tennis, Rugby, Formula 1, AFL, Cricket, MotoGP, IndyCar, college baseball/softball, and additional sports under consideration.
 

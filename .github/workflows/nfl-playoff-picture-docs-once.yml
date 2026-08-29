@@ -4,8 +4,6 @@ on:
   push:
     paths:
       - '.github/workflows/nfl-playoff-picture-docs-once.yml'
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -25,9 +23,6 @@ jobs:
       - name: Fold playoff picture into NFL examples
         shell: bash
         run: |
-          mkdir -p examples/images/NFL
-          base64 -d .github/nfl_playoff_picture_docs.b64 > examples/images/NFL/nfl_standings_playoff_picture.webp
-
           python - <<'PY'
           from pathlib import Path
 

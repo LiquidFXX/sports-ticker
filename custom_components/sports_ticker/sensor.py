@@ -23,6 +23,7 @@ from .const import (
 )
 from .coordinator import MLB_PLAYER_LEADERS_KEY, SportsTickerCoordinator
 from .next_game import ESPNFootballNextGame, FootballNextGameCoordinator
+from .nfl_standings import ESPNNFLStandingsRaw, NFLStandingsCoordinator
 
 
 async def async_setup_entry(
@@ -58,6 +59,12 @@ async def async_setup_entry(
         next_game_coordinator = FootballNextGameCoordinator(hass, entry, league)
         await next_game_coordinator.async_config_entry_first_refresh()
         entities.append(ESPNFootballNextGame(next_game_coordinator))
+
+    if "nfl" in leagues:
+        standings_coordinator = NFLStandingsCoordinator(hass, entry, coordinator)
+        await standings_coordinator.async_load_cached_data()
+        await standings_coordinator.async_config_entry_first_refresh()
+        entities.append(ESPNNFLStandingsRaw(standings_coordinator))
 
     if "cfb" in leagues:
         rankings_coordinator = CFBRankingsCoordinator(hass, entry)

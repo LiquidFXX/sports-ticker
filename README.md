@@ -1,272 +1,86 @@
-<!-- support_badges_start -->
-[![PayPal](https://img.shields.io/badge/PayPal-Support%20Me-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/KevinHughesPhoto)
-[![Total Downloads](https://img.shields.io/github/downloads/LiquidFXX/sports-ticker/total?label=Total%20Downloads)](https://github.com/LiquidFXX/sports-ticker/releases)
-<!-- support_badges_end -->
+<div align="center">
 
-# 🏟️ Home Assistant Sports Ticker
+# 🏟️ Sports Ticker for Home Assistant
 
-> A Home Assistant integration that pulls live sports data from ESPN scoreboards and exposes it as sensors for Lovelace tickers, scoreboards, game cards, highlights, and dashboards.
+### Turn ESPN sports data into live Home Assistant scoreboards, tickers, game cards, rankings, highlights, and team-focused dashboards.
 
----
+[![Latest Release](https://img.shields.io/github/v/release/LiquidFXX/sports-ticker?label=Latest%20Release)](https://github.com/LiquidFXX/sports-ticker/releases/latest)
+[![Total Downloads](https://img.shields.io/github/downloads/LiquidFXX/sports-ticker/total?label=Downloads)](https://github.com/LiquidFXX/sports-ticker/releases)
+[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5?logo=homeassistant&logoColor=white)](#installation)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Custom%20Integration-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
+[![License](https://img.shields.io/github/license/LiquidFXX/sports-ticker)](LICENSE)
 
-## 📦 v0.0.20 — Football foundation
+**Stable release:** `v0.20.1`  •  **Current main branch:** `v0.20.2-beta.1`
 
-- 🏈 **Favorite-team College Football next game sensor**
-  - Added `sensor.espn_cfb_next_game` when College Football is enabled
-  - Uses the College Football favorite selected in Sports Ticker options
-  - Reads that team's ESPN schedule and selects the earliest future scheduled game
-
-- 🏈 **Shared NFL + College Football next-game model**
-  - Preserves `sensor.espn_nfl_next_game`
-  - Standardizes matchup, opponent, home/away, kickoff, venue, broadcast, season/week, logos, records, rankings, and freshness attributes where ESPN provides them
-  - Adds College Football context such as neutral-site and conference-game information when available
-  - Keeps the last successful next-game result if ESPN temporarily fails
-
-- 📦 **HACS release ZIP support**
-  - Releases now publish `sports_ticker.zip`
-  - HACS is configured to install from the release asset
-  - GitHub release asset downloads provide the download metric HACS can use without adding installation telemetry
-
-- 🗺️ **Season-based sports roadmap**
-  - Planned sport releases are targeted ahead of their seasons or major annual competitions
-  - Future targets include College Basketball, Tennis, Rugby, Formula 1, AFL, Cricket, MotoGP, IndyCar, and more
+</div>
 
 ---
 
-## 📣 What's new in v0.20.1
+## See it in action
 
-- 🏆 **College Football rankings sensor**
-  - Adds `sensor.espn_cfb_rankings` whenever College Football is enabled
-  - Exposes all polls ESPN currently provides, including AP Top 25, Coaches Poll, and College Football Playoff rankings when available
-  - Normalizes current rank, previous rank, trend, record, first-place votes, points, team colors, logos, and dropped-out teams
-  - Provides card-friendly aliases: `ap_top_25`, `coaches_poll`, and `cfp`
-  - Preserves the last successful ranking data if ESPN is temporarily unavailable
-
----
-
-## 🚧 In development for v0.20.2
-
-- 🏈 **Per-team NFL game leaders**
-  - Adds `team_leaders.away` and `team_leaders.home` to NFL competition payloads
-  - Uses ESPN game summary / box-score player statistics rather than guessing from the overall `leaders` array
-  - Includes passing yards, rushing yards, receiving yards, sacks, and tackles with player details and useful secondary stats
-  - Keeps the existing ESPN `leaders` data unchanged for backward compatibility
-  - Uses cached final leaders to avoid repeatedly fetching completed-game summaries
-
----
-
-## 🏈 NFL card showcase
-
-The NFL examples are being rebuilt around cards that are useful day-to-day. The current set includes a favorite-team next-game card, a multi-sport scrolling ticker, and a playable ESPN highlights card.
-
-### Favorite Team Next Game
-
-Automatically follows the NFL favorite configured in Sports Ticker and shows the next matchup, kickoff, venue, broadcast, week, and home/away status.
-
-<a href="examples/NFL.md#1-favorite-team-next-game">
-  <img src="examples/images/NFL/nfl_next_game_card.svg" alt="NFL Favorite Team Next Game card" width="360">
-</a>
-
-### Scrolling Sports Ticker
-
-A glass-style ticker that can show NFL by itself or combine multiple enabled sports in one continuous scrolling display.
+Sports Ticker gives Home Assistant the sports data. The included Lovelace examples show what you can build with it.
 
 <a href="examples/NFL.md#2-scrolling-sports-ticker">
-  <img src="examples/images/NFL/nfl_multi_sport_ticker.gif" alt="NFL multi-sport scrolling ticker" width="100%">
+  <img src="examples/images/NFL/nfl_multi_sport_ticker.gif" alt="Sports Ticker scrolling multi-sport Home Assistant card" width="100%">
 </a>
 
-### NFL Game Highlights
+<p align="center">
+  <a href="examples/NFL.md#1-favorite-team-next-game">
+    <img src="examples/images/NFL/nfl_next_game_card.svg" alt="NFL favorite team next game card" width="31%">
+  </a>
+  &nbsp;
+  <a href="examples/NFL.md#4-this-week-in-the-nfl">
+    <img src="examples/images/NFL/nfl_this_week_card.svg" alt="NFL this week card" width="31%">
+  </a>
+  &nbsp;
+  <a href="examples/CFB.md">
+    <img src="examples/images/CFB/cfb_rankings_card.webp" alt="College Football rankings card" width="31%">
+  </a>
+</p>
 
-Finds playable ESPN highlights from the NFL scoreboard data and combines the video with the final score and recap information.
-
-<a href="examples/NFL.md#3-nfl-game-highlights">
-  <img src="https://github.com/user-attachments/assets/44bc4b4e-5866-490e-a4df-73c7ade104b9" alt="NFL Game Highlights card" width="420">
-</a>
-
-➡️ **[Open the full NFL examples with copy/paste YAML](examples/NFL.md)**
-
----
-
-## ✨ What this integration does
-
-- Creates live ESPN scoreboard sensors for selected leagues
-- Exposes raw ESPN scoreboard data for Lovelace cards
-- Lets you select a favorite team for each league
-- Creates favorite-team NFL and College Football next-game sensors when those leagues are enabled
-- Creates a normalized College Football rankings sensor when CFB is enabled
-- Exposes ticker speed and theme settings as sensor attributes
-- Keeps the last good scoreboard data if ESPN is temporarily unavailable
-- Adds cache and freshness attributes for dashboard status indicators
-- Works well with:
-  - `custom:button-card`
-  - `card-mod`
-  - Mushroom cards
-  - Home Assistant sections dashboards
+> The integration supplies normalized ESPN data as Home Assistant sensors. The example cards are starting points—you can restyle them to match your own dashboard theme.
 
 ---
 
-## 📌 Quick links
+## What Sports Ticker can do
 
-| Category | Description | Link |
-| :--- | :--- | :---: |
-| Installation | HACS and manual installation | [Jump](#-installation) |
-| Configuration | Leagues, favorites, ticker speed, and theme | [Jump](#️-configuration) |
-| Sensors | Entity names and available attributes | [Jump](#-entities--sensors) |
-| NFL showcase | Preview the newest NFL dashboard cards | [Jump](#-nfl-card-showcase) |
-| Examples | Ready-to-use Lovelace cards | [Jump](#-lovelace-examples) |
-| Planned sports | Season-based expansion roadmap | [Jump](#️-planned-sports-roadmap) |
-| Troubleshooting | Common setup and dashboard issues | [Jump](#️-troubleshooting) |
+| Feature | What you get |
+| :--- | :--- |
+| 🏟️ **Live scoreboards** | ESPN scoreboard data for every enabled league, including events, teams, scores, status, venue, broadcasts, and game metadata where available |
+| ⭐ **Favorite teams** | Select a favorite team per league and expose it directly to cards and automations |
+| 📅 **Next-game sensors** | Dedicated NFL and College Football next-game entities that follow your configured favorite team |
+| 🏆 **College Football rankings** | AP Top 25, Coaches Poll, CFP rankings, previous rank, trend, records, votes, points, logos, and dropped-out teams |
+| 📊 **Player / team leaders** | MLB player leader sensors plus NFL per-team game leaders for passing, rushing, receiving, sacks, and tackles |
+| 🎬 **Highlights** | ESPN highlight/video metadata that can power playable game recap cards |
+| 📺 **Scrolling tickers** | Build single-sport or multi-sport ESPN-style tickers with your own speed and theme |
+| 💾 **Failure-resistant data** | Last-good caching keeps cards populated when ESPN temporarily times out or returns bad data |
+| 🧩 **Card-friendly attributes** | Raw ESPN data plus normalized helpers designed for `custom:button-card`, `card-mod`, Mushroom, and Sections dashboards |
 
----
-
-## ✅ Supported leagues
-
-### Major U.S. leagues
-
-- MLB
-- NFL
-- College Football
-- NBA
-- WNBA
-- NHL
-
-### Golf and racing
-
-- PGA Tour
-- NASCAR
-
-### Soccer
-
-- MLS
-- Premier League
-- LaLiga
-- Bundesliga
-- Serie A
-- Ligue 1
-- Champions League
+Sports Ticker does **not** lock you into one dashboard design. It gives Home Assistant a reusable sports data layer so one integration can feed scoreboards, compact cards, wall displays, tablets, automations, and full sports dashboards.
 
 ---
 
-## 🗺️ Planned sports roadmap
+## Supported sports and leagues
 
-New sports are targeted for releases **before their seasons or major annual competitions begin**, leaving time for testing, documentation, and dashboard examples. Version targets may move if ESPN data is not reliable enough for production support or if an official season calendar changes.
+| Category | Leagues |
+| :--- | :--- |
+| ⚾ Baseball | MLB |
+| 🏈 Football | NFL, College Football |
+| 🏀 Basketball | NBA, WNBA |
+| 🏒 Hockey | NHL |
+| ⚽ Soccer | MLS, Premier League, LaLiga, Bundesliga, Serie A, Ligue 1, UEFA Champions League |
+| ⛳ Golf | PGA Tour |
+| 🏁 Racing | NASCAR |
 
-### Version numbering going forward
-
-Starting with the next update, Sports Ticker will use:
-
-```text
-v0.<feature line>.<sub-update>
-```
-
-Examples:
-
-- `v0.20.1` — first follow-up update to the Football release line
-- `v0.20.2` — another Football fix/card/docs update
-- `v0.21.0` — next feature release line
-- `v0.21.1` — follow-up update to v0.21
-
-The current release is **v0.20.1**, beginning the new feature-line version structure. Future Football fixes and refinements can use `v0.20.2`, `v0.20.3`, and so on before the next feature line starts at `v0.21.0`.
-
-| Version | Target release | Sport / focus | Seasonal goal |
-| :--- | :--- | :--- | :--- |
-| **v0.20.1** | Aug–Sep 2026 | 🏈 NFL + College Football | Football sub-update: cards, examples, CFB rankings, CFB/NFL refinements, and season-ready fixes |
-| **v0.21.0** | Oct 2026 | 🏀 College Basketball | Land before the November college basketball season |
-| **v0.22.0** | Dec 2026 | 🎾 Tennis | Land before the January 2027 Australian Open; begin with ATP/WTA and major tournaments |
-| **v0.23.0** | Jan 2027 | 🏉 Rugby Union | Land before the 2027 Six Nations begins in early February |
-| **v0.24.0** | Early Feb 2027 | 🏉 Rugby League | Land before the 2027 NRL season begins in late February |
-| **v0.25.0** | Feb 2027* | 🏎️ Formula 1 | Land before the 2027 F1 season; establish the motorsport event model |
-| **v0.26.0** | Feb–Mar 2027* | 🦘 Australian Rules Football | Land before the 2027 AFL season |
-| **v0.27.0** | Mar 2027 | 🏏 Cricket | Target the major spring T20 / IPL window while building a year-round cricket model |
-| **v0.28.0** | Pre-season target | 🏍️ MotoGP | Reuse the motorsport architecture established for Formula 1 |
-| **v0.29.0** | Pre-season target | 🏎️ IndyCar | Add before a future IndyCar season begins |
-| **v0.30.0** | Jan 2028 | ⚾🥎 College Baseball + Softball | Land before the NCAA spring schedules begin |
-| **v0.31.0** | Pre-season target | 🏒 College Hockey | Land before an NCAA hockey season begins |
-
-\* Target month is provisional until the relevant official season calendar is published.
-
-### Future event-driven candidates
-
-These sports do not follow a single traditional season, so they can fit between seasonal releases once the common event model is ready:
-
-- 🥋 MMA / UFC
-- 🥊 Boxing
-
-### Additional seasonal candidates
-
-- 🏐 Volleyball
-- 🤾 Handball
-- 🥍 Lacrosse
-- 🏑 Field Hockey
-- 🏒 International and non-NHL hockey
-- 🏈 Canadian Football
-- 🏎️ Endurance racing and additional motorsport series
-
-A planned sport becomes an official release target only after its ESPN scoreboard, schedule, competitor, status, and event data are verified as reliable enough for Home Assistant use.
+More sports are planned around their seasonal calendars so support can land before each season or major competition begins.
 
 ---
 
-## 📦 Installation
+## Core entities
 
-### Option A: HACS
+### League scoreboards
 
-1. Open **HACS → Integrations**.
-2. Open the three-dot menu and choose **Custom repositories**.
-3. Add this repository.
-4. Choose **Integration** as the category.
-5. Install **Sports Ticker**.
-6. Restart Home Assistant.
-
-### Option B: Manual installation
-
-Copy the integration folder to:
-
-```text
-config/custom_components/sports_ticker/
-```
-
-Then restart Home Assistant and add the integration from:
-
-```text
-Settings → Devices & services → Add integration → Sports Ticker
-```
-
----
-
-## ⚙️ Configuration
-
-Open:
-
-```text
-Settings → Devices & services → Sports Ticker → Configure
-```
-
-### Step 1: Sports, leagues, and display options
-
-Choose the leagues you want to track, then configure:
-
-- **Poll interval**: how often Sports Ticker refreshes ESPN data
-- **Ticker speed**: the animation duration in seconds
-  - Lower numbers scroll faster
-  - Higher numbers scroll slower
-  - Supported range: **4 to 60 seconds**
-- **Ticker theme**: light or dark
-
-### Step 2: Favorite teams
-
-Choose a favorite team for each selected league. Dashboard cards can use this information to:
-
-- Sort favorite games first
-- Highlight favorite teams
-- Build team-focused cards
-
-The selected NFL and College Football favorites also drive their next-game sensors.
-
----
-
-## 🧠 Entities and sensors
-
-Raw scoreboard sensors follow this pattern:
+Each selected league gets a raw scoreboard sensor:
 
 ```text
 sensor.espn_<league>_scoreboard_raw
@@ -275,275 +89,272 @@ sensor.espn_<league>_scoreboard_raw
 Examples:
 
 ```text
-sensor.espn_mlb_scoreboard_raw
 sensor.espn_nfl_scoreboard_raw
 sensor.espn_cfb_scoreboard_raw
+sensor.espn_mlb_scoreboard_raw
 sensor.espn_nba_scoreboard_raw
-sensor.espn_wnba_scoreboard_raw
 sensor.espn_nhl_scoreboard_raw
-sensor.espn_mls_scoreboard_raw
 sensor.espn_epl_scoreboard_raw
-sensor.espn_laliga_scoreboard_raw
-sensor.espn_bundesliga_scoreboard_raw
-sensor.espn_seriea_scoreboard_raw
-sensor.espn_ligue1_scoreboard_raw
-sensor.espn_ucl_scoreboard_raw
 ```
 
-### Football favorite next game
+Typical attributes include:
 
-When NFL or College Football is enabled, Sports Ticker creates the corresponding favorite-team next-game sensor:
+```yaml
+events:
+  - ...
+season:
+day:
+next:
+favorite_team:
+favorite_team_name:
+has_favorite_team: true
+ticker_speed: 12
+ticker_theme: light
+stale: false
+source: espn
+```
+
+### Favorite-team next game
+
+When NFL or College Football is enabled:
 
 ```text
 sensor.espn_nfl_next_game
 sensor.espn_cfb_next_game
 ```
 
-Each sensor follows the favorite selected for that league. Its state is the next matchup, for example:
+The sensor automatically follows the favorite team selected in Sports Ticker settings.
+
+Example state:
 
 ```text
 KC @ BUF
 ```
 
-Useful attributes include:
-
-```yaml
-league: nfl
-favorite_team: KC
-favorite_team_name: Kansas City Chiefs
-has_upcoming_game: true
-date: "2026-09-01T00:00:00Z"
-home_team: BUF
-away_team: KC
-home_away: away
-opponent: BUF
-opponent_name: Buffalo Bills
-venue: Highmark Stadium
-broadcasts:
-  - CBS
-week: 1
-stale: false
-source: espn
-```
-
-College Football exposes the same common model and also includes additional context such as rankings, records, neutral-site status, and conference-game information when ESPN provides it.
-
-If no favorite is configured, the sensor state is `No favorite team`. If ESPN returns no future scheduled event for that favorite, the state is `No upcoming game`.
+Useful attributes include kickoff time, opponent, home/away, venue, broadcasts, team logos, season/week, rankings/records where available, and freshness metadata.
 
 ### College Football rankings
-
-When College Football is enabled, Sports Ticker also creates:
 
 ```text
 sensor.espn_cfb_rankings
 ```
 
-The state identifies the preferred current poll and the number of ranked teams, for example:
-
-```text
-AP Top 25 - 25 teams
-```
-
-The sensor exposes all polls currently returned by ESPN. Card-friendly aliases make the major polls easy to use directly:
+Card-friendly aliases include:
 
 ```yaml
-season: 2026
-week: 1
-primary_poll: ap_top_25
 ap_top_25:
-  - rank: 1
-    previous_rank: 2
-    trend: 1
-    abbreviation: TEX
-    display_name: Texas Longhorns
-    record: 0-0
-    first_place_votes: 25
-    points: 1525
-    logo: https://...
+  - ...
 coaches_poll:
   - ...
 cfp:
   - ...
-polls:
-  ap_top_25:
-    name: AP Top 25
-    headline: ...
-    ranks:
-      - ...
-    dropped_out:
-      - ...
-stale: false
-source: espn
 ```
 
-The `cfp` list can be empty early in the season before the College Football Playoff committee publishes its first rankings. `ap_top_25` and `coaches_poll` are populated whenever ESPN provides those polls.
+The `cfp` list remains empty until ESPN publishes College Football Playoff rankings for the season.
 
-### NFL per-team game leaders
+### MLB player leaders
 
-NFL scoreboard events now keep ESPN's existing competition-level `leaders` array and also add normalized away/home leaders from the game's ESPN summary box score. This is designed for side-by-side GAME LEADERS cards.
+```text
+sensor.espn_mlb_player_leaders_raw
+```
+
+Includes normalized leader groups such as home runs, RBI, hits, stolen bases, wins, ERA, strikeouts, and saves when ESPN provides them.
+
+### NFL team leaders
+
+NFL scoreboard competition objects can include normalized per-team game leaders:
 
 ```yaml
-events:
-  - id: "401873286"
-    competitions:
-      - leaders: []  # Existing ESPN leaders are unchanged
-        team_leaders:
-          away:
-            passing:
-              name: Aidan O'Connell
-              short_name: A. O'Connell
-              position: QB
-              headshot: https://...
-              value: 166
-              detail: 15/24 CMP/ATT
-              team_id: "13"
-              team_abbreviation: LV
-            rushing: null
-            receiving: null
-            sacks: null
-            tackles: null
-          home:
-            passing: null
-            rushing: null
-            receiving: null
-            sacks: null
-            tackles: null
+team_leaders:
+  away:
+    passing: ...
+    rushing: ...
+    receiving: ...
+    sacks: ...
+    tackles: ...
+  home:
+    passing: ...
+    rushing: ...
+    receiving: ...
+    sacks: ...
+    tackles: ...
 ```
 
-The five normalized categories are `passing`, `rushing`, `receiving`, `sacks`, and `tackles`. Missing ESPN data is exposed as `null` rather than borrowing a player from the other team. Passing detail contains completions/attempts when available; rushing detail carries attempts, receiving detail carries receptions, and tackles detail carries solo tackles.
-
-### Main scoreboard attributes
-
-```yaml
-events:
-  - ...
-leagues:
-day:
-season:
-next:
-```
-
-### Favorite team attributes
-
-```yaml
-favorite_team: ATL
-favorite_team_name: Atlanta Braves
-has_favorite_team: true
-```
-
-### Ticker helper attributes
-
-```yaml
-ticker_speed: 12
-ticker_theme: light
-```
-
-`ticker_speed` is the configured animation duration in seconds. A lower value creates a faster scroll; a higher value creates a slower scroll.
-
-### Cache and freshness attributes
-
-```yaml
-stale: false
-source: espn
-last_successful_update: "2026-05-05T23:00:00+00:00"
-last_attempted_update: "2026-05-05T23:00:00+00:00"
-last_error: null
-```
-
-When ESPN is unavailable, Sports Ticker keeps the last valid data and marks it as cached:
-
-```yaml
-stale: true
-source: cache
-last_error: "Unexpected status 503"
-```
+Existing ESPN `leaders` data is preserved for backward compatibility.
 
 ---
 
-## 🧩 Lovelace examples
+## Installation
 
-All example cards are stored in the top-level [`examples`](examples/) folder.
+### HACS
 
-| Example | Description |
-| :--- | :--- |
-| [`NFL.md`](examples/NFL.md) | Favorite-team next game, multi-sport scrolling ticker, and playable NFL game highlights |
-| [`college_football_ticker_card.yaml`](examples/college_football_ticker_card.yaml) | Scrolling College Football ticker that uses the configured favorite team and ticker speed |
-| [`multi_league_ticker_card.yaml`](examples/multi_league_ticker_card.yaml) | Reusable ticker card template for supported leagues |
-| [`MLB.md`](examples/MLB.md) | MLB ticker, schedule, gamecast, standings, and stats layouts |
-| [`NBA.md`](examples/NBA.md) | NBA schedule, ticker, and dashboard card examples |
+Sports Ticker is installed as a **custom HACS integration**.
 
-The College Football ticker reads integration options directly from the scoreboard sensor:
+1. Open **HACS → Integrations**.
+2. Open the three-dot menu and choose **Custom repositories**.
+3. Add:
 
-```javascript
-const speed = Number(
-  states['sensor.espn_cfb_scoreboard_raw']?.attributes?.ticker_speed
-);
-
-const favorite =
-  states['sensor.espn_cfb_scoreboard_raw']?.attributes?.favorite_team;
+```text
+https://github.com/LiquidFXX/sports-ticker
 ```
 
-This means changing Sports Ticker options updates the card after the integration reloads. No separate `input_number` helper is required.
+4. Select **Integration** as the category.
+5. Install **Sports Ticker**.
+6. Restart Home Assistant.
+7. Go to **Settings → Devices & services → Add integration → Sports Ticker**.
+
+Release builds include a `sports_ticker.zip` asset for HACS installation.
+
+### Manual installation
+
+Copy:
+
+```text
+custom_components/sports_ticker/
+```
+
+to:
+
+```text
+config/custom_components/sports_ticker/
+```
+
+Restart Home Assistant, then add **Sports Ticker** from **Settings → Devices & services**.
 
 ---
 
-## 🛠️ Troubleshooting
+## Configuration
 
-### The new options are not visible
-
-Update the integration, restart Home Assistant, then reopen:
+Open:
 
 ```text
 Settings → Devices & services → Sports Ticker → Configure
 ```
 
-### The ticker speed does not change
+Choose the leagues you want, then configure:
 
-Confirm the Lovelace card reads:
+- **Favorite team** for each selected league
+- **Poll interval** for ESPN updates
+- **Ticker speed** from 4–60 seconds
+- **Ticker theme** for example cards
 
-```javascript
-entity.attributes.ticker_speed
-```
+Lower ticker-speed values move faster; higher values move slower.
 
-or the equivalent scoreboard entity state attribute. A hard-coded CSS value such as `36s` will ignore the integration setting.
+---
 
-### My sensor says cached
+## Lovelace examples
 
-ESPN was unavailable, timed out, or returned invalid data. Sports Ticker intentionally keeps the last valid scoreboard instead of blanking the card.
+The `examples/` folder contains complete, copy/paste-oriented dashboard examples.
 
-### My favorite team does not show
+| Sport | Examples |
+| :--- | :--- |
+| 🏈 NFL | [Next game, scrolling ticker, highlights, weekly cards, leaders, and more](examples/NFL.md) |
+| 🏈 College Football | [Rankings and College Football cards](examples/CFB.md) |
+| ⚾ MLB | [Ticker, schedule, standings-style layouts, stats, and game cards](examples/MLB.md) |
+| 🏀 NBA | [Schedule, ticker, and dashboard cards](examples/NBA.md) |
+| 🌐 Multi-sport | [`multi_league_ticker_card.yaml`](examples/multi_league_ticker_card.yaml) |
 
-Reopen the integration options and select a favorite team for that league. Then check the scoreboard sensor attributes for:
+Many examples use community frontend cards such as:
+
+- `custom:button-card`
+- `card-mod`
+- Mushroom cards
+
+Those frontend cards are optional for the integration itself; they are only required by examples that reference them.
+
+---
+
+## Reliability and caching
+
+ESPN endpoints occasionally timeout, return incomplete data, or temporarily fail. Sports Ticker is designed not to blank a dashboard every time that happens.
+
+Fresh data reports:
 
 ```yaml
-favorite_team:
-favorite_team_name:
-has_favorite_team:
+stale: false
+source: espn
+last_successful_update: "..."
+last_attempted_update: "..."
+last_error: null
 ```
 
-### My dashboard card is blank
+When a cached last-good result is being used:
 
-Verify that:
+```yaml
+stale: true
+source: cache
+last_error: "..."
+```
 
-- The correct raw scoreboard sensor is used
-- The entity has an `events` attribute
-- The selected league is enabled in the integration options
-- Required custom cards such as `button-card` and `card-mod` are installed
-
----
-
-## 📌 Version
-
-Current published version: **v0.20.1**
-
-Next Football sub-update: **v0.20.2**
-
-Going forward, feature lines use `v0.<feature>.0` and follow-up fixes/improvements increment the final number, for example `v0.20.1`, `v0.20.2`, then `v0.21.0`.
+This makes it easy to build dashboard indicators or automations around data freshness.
 
 ---
 
-## ❤️ Support
+## Current development
 
-If this project helps you build better Home Assistant dashboards, support is appreciated:
+The stable release is **v0.20.1**. The `main` branch is currently on **v0.20.2-beta.1** with additional NFL game-leader work.
+
+Active development also includes an **NFL standings and playoff-picture data source** on:
+
+```text
+feature/nfl-standings-playoff-picture
+```
+
+That work is being kept separate until it is ready to merge so existing entity IDs and scoreboard behavior remain backward-compatible.
+
+Future feature lines are planned around seasonal timing, with College Basketball, Tennis, Rugby, Formula 1, AFL, Cricket, MotoGP, IndyCar, college baseball/softball, and additional sports under consideration.
+
+---
+
+## Troubleshooting
+
+### A sensor is missing
+
+Confirm that its league is enabled under **Sports Ticker → Configure**, then reload or restart Home Assistant after an integration update.
+
+### A card is blank
+
+Check that:
+
+- The entity ID in the card exists.
+- The entity has the expected `events` or normalized attributes.
+- Required frontend cards such as `button-card` or `card-mod` are installed.
+- ESPN data is not temporarily unavailable.
+
+### The sensor says `Cached`
+
+Sports Ticker could not retrieve a valid fresh response and is intentionally preserving the last good data instead of clearing the sensor.
+
+### Favorite-team cards show the wrong team
+
+Open **Sports Ticker → Configure** and verify the selected favorite for that league. Favorite-team cards and next-game sensors read that integration setting directly.
+
+---
+
+## Project goals
+
+Sports Ticker is built around a few simple rules:
+
+- **Useful Home Assistant entities first** — not just raw API dumps.
+- **Backward compatibility** — new sports and sensors should be additive whenever possible.
+- **No fabricated sports data** — if ESPN does not provide something reliably, it should remain unavailable rather than be guessed.
+- **Dashboard-friendly normalization** — expose predictable data that is practical to use in Lovelace.
+- **Graceful failures** — preserve last-good data whenever possible.
+
+---
+
+## Support
+
+If Sports Ticker helps build your Home Assistant sports dashboard, starring the repository helps other users find it.
 
 [![PayPal](https://img.shields.io/badge/PayPal-Support%20Me-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/KevinHughesPhoto)
+
+Issues, feature requests, card ideas, and tested ESPN data improvements are welcome through the repository issue tracker.
+
+---
+
+<div align="center">
+
+**Built for Home Assistant dashboards that should feel like a real sports screen.**
+
+</div>

@@ -175,7 +175,7 @@ teams:
 
 Normalized team rows include ESPN standings data such as record, win percentage, division/conference rank, playoff seed, streak, games back, and clincher information when available. Sports Ticker also exposes clearly labeled derived helpers for division leaders, wild cards, seeds 1–7, playoff cut-line handling, and "in the hunt" displays without fabricating ESPN clinch flags.
 
-See **[NFL standings sensor documentation](examples/NFL_STANDINGS.md)** for the full attribute model.
+See **[NFL Standings & Playoff Picture example](examples/NFL.md#7-standings--playoff-picture)** for the card, sensor usage, and troubleshooting notes.
 
 ### College Football rankings
 
@@ -292,8 +292,7 @@ The `examples/` folder contains complete, copy/paste-oriented dashboard examples
 
 | Sport | Examples |
 | :--- | :--- |
-| 🏈 NFL | [Next game, scrolling ticker, highlights, weekly cards, leaders, and more](examples/NFL.md) |
-| 🏈 NFL standings | [Normalized standings and playoff-picture sensor shape](examples/NFL_STANDINGS.md) |
+| 🏈 NFL | [Next game, scrolling ticker, highlights, leaders, standings, playoff picture, and more](examples/NFL.md) |
 | 🏈 College Football | [Rankings and College Football cards](examples/CFB.md) |
 | ⚾ MLB | [Ticker, schedule, standings-style layouts, stats, and game cards](examples/MLB.md) |
 | 🏀 NBA | [Schedule, ticker, and dashboard cards](examples/NBA.md) |

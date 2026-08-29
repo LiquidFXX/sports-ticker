@@ -11,6 +11,7 @@ The NFL examples use the raw scoreboard sensor and the favorite-team next-game s
 ```yaml
 sensor.espn_nfl_scoreboard_raw
 sensor.espn_nfl_next_game
+sensor.espn_nfl_standings_raw
 ```
 
 ## Requirements
@@ -20,6 +21,7 @@ sensor.espn_nfl_next_game
 | `sports_ticker` integration | Provides ESPN-style NFL data |
 | `sensor.espn_nfl_next_game` | Favorite team's next scheduled game |
 | `sensor.espn_nfl_scoreboard_raw` | Full NFL scoreboard, highlights, alerts, and per-team game leaders |
+| `sensor.espn_nfl_standings_raw` | AFC/NFC standings, playoff seeds, wild cards, favorite-team status, streaks, games back, and ESPN clinch data |
 | `custom:button-card` | Required for the custom cards |
 | `card-mod` | Required for advanced styling |
 
@@ -33,6 +35,7 @@ sensor.espn_nfl_next_game
 | 4. NFL Highlights Rail | Featured completed-game highlight plus three playable videos and expandable extras | `sensor.espn_nfl_scoreboard_raw` |
 | 5. Conditional Alert Cards | Red Zone, Upset Watch, and Touchdown alerts during live games | `sensor.espn_nfl_scoreboard_raw` |
 | 6. Game Leaders | Away/home passing, rushing, receiving, sacks, and tackles leaders | `sensor.espn_nfl_scoreboard_raw` |
+| 7. Standings & Playoff Picture | AFC/NFC seeds, division leaders, wild cards, playoff cut line, favorite team, and teams in the hunt | `sensor.espn_nfl_standings_raw` |
 
 ---
 
@@ -10826,7 +10829,357 @@ card_mod:
 
 ---
 
+
+---
+
+## 7. Standings & Playoff Picture
+
+A full NFL playoff-race dashboard powered by `sensor.espn_nfl_standings_raw`. It renders the AFC and NFC side by side with the current seeds, division leaders, wild cards, the playoff cut line, teams immediately outside the field, favorite-team highlighting, streaks, games back, and ESPN clinch status when available.
+
+<img src="images/NFL/nfl_standings_playoff_picture.webp" alt="NFL Standings and Playoff Picture card example" width="520">
+
+> **New user notes**
+> - Requires **Sports Ticker 0.20.3-alpha.1 or newer**, `custom:button-card`, and `card-mod`.
+> - Uses `sensor.espn_nfl_standings_raw`; no NFL teams or records are hard-coded.
+> - `main_teams: 9` controls how many teams appear in each conference panel. The top seven remain the playoff field; seeds below the cut line appear under **Outside the Playoffs**.
+> - `hunt_teams: 4` controls how many additional teams per conference can appear in the **In the Hunt** rail.
+> - The configured NFL favorite is highlighted automatically from the sensor's `favorite_team` / `favorite` fields.
+> - Division leaders, wild cards, playoff position, streak, and games-back values come directly from the normalized standings attributes.
+> - Clinch indicators only appear when ESPN supplies a corresponding normalized clinch flag; the card does not invent clinched status.
+> - Early in the season ESPN can leave `in_the_hunt` as `null`. Until that flag is populated, the card falls back to the next teams immediately below the main conference rows so the rail remains useful.
+> - The reusable card is also stored in [`nfl_standings_playoff_picture_card.yaml`](nfl_standings_playoff_picture_card.yaml).
+
+<details>
+<summary>Copy YAML</summary>
+
+```yaml
+type: custom:button-card
+entity: sensor.espn_nfl_standings_raw
+
+show_name: false
+show_icon: false
+show_state: false
+triggers_update: all
+
+tap_action:
+  action: none
+hold_action:
+  action: none
+
+grid_options:
+  columns: 12
+  rows: auto
+
+variables:
+  src: sensor.espn_nfl_standings_raw
+  main_teams: 9
+  hunt_teams: 4
+
+styles:
+  card:
+    - padding: 0
+    - overflow: hidden
+    - border-radius: 22px
+    - background: rgba(5, 11, 20, 0.98)
+    - border: 1px solid rgba(255,255,255,.12)
+    - box-shadow: 0 18px 45px rgba(0,0,0,.32)
+    - container-type: inline-size
+  grid:
+    - grid-template-areas: '"main"'
+    - grid-template-columns: 1fr
+    - grid-template-rows: auto
+  custom_fields:
+    main:
+      - width: 100%
+      - min-width: 0
+
+custom_fields:
+  main: |
+    [[[
+      const st = states[variables.src];
+      const esc = v => String(v ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+      const arr = v => Array.isArray(v) ? v : [];
+      const yes = v => v === true || String(v).toLowerCase() === "true";
+      const num = (v, d = 0) => {
+        const n = Number.parseInt(v, 10);
+        return Number.isFinite(n) ? n : d;
+      };
+
+      if (!st) {
+        return `<div class="po-empty"><div>🏈</div><strong>NFL STANDINGS</strong><span>${esc(variables.src)} is unavailable</span></div>`;
+      }
+
+      const a = st.attributes || {};
+      const afc = arr(a.conferences?.AFC);
+      const nfc = arr(a.conferences?.NFC);
+      if (!afc.length || !nfc.length) {
+        return `<div class="po-empty"><div>🏈</div><strong>NFL STANDINGS</strong><span>Conference standings are unavailable</span></div>`;
+      }
+
+      const mainTeams = Math.max(7, Math.min(12, num(variables.main_teams, 9)));
+      const huntTeams = Math.max(0, Math.min(6, num(variables.hunt_teams, 4)));
+      const playoff = a.playoff || {};
+      const cut = num(playoff.cut_line_seed, 7) || 7;
+      const divisionSeeds = num(playoff.division_leader_seeds, 4) || 4;
+      const favorite = String(a.favorite_team || "").trim().toUpperCase();
+      const seed = t => num(t?.playoff_position ?? t?.conference_rank ?? t?.seed, 99);
+      const abbr = t => t?.abbreviation || "TEAM";
+      const record = t => t?.record || [t?.wins ?? 0, t?.losses ?? 0, t?.ties].filter(v => v !== undefined && v !== null).join("-");
+      const fav = t => yes(t?.favorite) || (!!favorite && String(t?.abbreviation || "").toUpperCase() === favorite);
+      const streak = t => String(t?.streak || "").trim();
+      const streakClass = t => streak(t).toUpperCase().startsWith("W") ? "win" : streak(t).toUpperCase().startsWith("L") ? "loss" : "";
+      const gb = t => {
+        const d = t?.games_back_display;
+        if (d !== undefined && d !== null && d !== "" && d !== "-") return `${d} GB`;
+        if (t?.games_back !== undefined && t?.games_back !== null) return `${t.games_back} GB`;
+        return "";
+      };
+      const category = t => {
+        const s = seed(t);
+        if (yes(t?.division_leader) || s <= divisionSeeds) return "division";
+        if (yes(t?.wildcard) || (s > divisionSeeds && s <= cut)) return "wildcard";
+        return "outside";
+      };
+      const clinch = t => {
+        if (yes(t?.clinched_first_seed)) return ["★", "#1 SEED"];
+        if (yes(t?.clinched_conference)) return ["★", "CLINCHED CONF"];
+        if (yes(t?.clinched_division)) return ["🔒", "CLINCHED DIV"];
+        if (yes(t?.clinched_playoff)) return ["★", "CLINCHED"];
+        if (yes(t?.clinched_wildcard)) return ["★", "CLINCHED WC"];
+        if (yes(t?.eliminated)) return ["×", "ELIM"];
+        return null;
+      };
+      const sortConf = teams => [...teams].sort((x, y) => seed(x) - seed(y));
+      const afcSorted = sortConf(afc);
+      const nfcSorted = sortConf(nfc);
+      const allTeams = [...afcSorted, ...nfcSorted];
+
+      const divider = (text, type) => `
+        <div class="section-label section-${type}"><span></span><strong>${esc(text)}</strong><span></span></div>`;
+
+      const row = t => {
+        const c = clinch(t);
+        const status = c
+          ? `<span class="clinch">${esc(c[0])} ${esc(c[1])}</span>`
+          : gb(t) ? `<span class="gb">${esc(gb(t))}</span>` : `<span class="dash">—</span>`;
+        return `
+          <div class="team-row ${category(t)} ${fav(t) ? "favorite-row" : ""}">
+            <div class="seed">${esc(seed(t))}</div>
+            <div class="team-logo">${t?.logo ? `<img src="${esc(t.logo)}" alt="${esc(abbr(t))}">` : ""}</div>
+            <div class="team-info">
+              <div class="team-main"><span class="team-abbr">${esc(abbr(t))}</span>${fav(t) ? `<span class="favorite-tag">★ YOUR TEAM</span>` : ""}</div>
+              <div class="team-division">${esc(t?.division || "")}</div>
+            </div>
+            <div class="record">${esc(record(t))}</div>
+            <div class="streak ${streakClass(t)}">${esc(streak(t) || "—")}</div>
+            <div class="status">${status}</div>
+          </div>`;
+      };
+
+      const conference = (name, teams) => {
+        let html = "";
+        let last = null;
+        teams.slice(0, mainTeams).forEach(t => {
+          const c = category(t);
+          if (c !== last) {
+            if (c === "division") html += divider("DIVISION LEADERS", c);
+            if (c === "wildcard") html += divider("WILD CARD", c);
+            if (c === "outside") html += divider("OUTSIDE THE PLAYOFFS", c);
+            last = c;
+          }
+          html += row(t);
+        });
+        const cls = name.toLowerCase();
+        return `
+          <section class="conference ${cls}">
+            <div class="conference-header"><div class="conference-mark">${name === "AFC" ? "A" : "N"}</div><div class="conference-name">${name}</div></div>
+            <div class="column-labels"><span>SEED</span><span>TEAM</span><span>RECORD</span><span>STREAK</span><span>STATUS</span></div>
+            <div class="team-list">${html}</div>
+          </section>`;
+      };
+
+      const favoriteTeam = allTeams.find(fav);
+      const favoritePanel = favoriteTeam ? `
+        <div class="favorite-panel">
+          <div class="favorite-label">★ FAVORITE TEAM</div>
+          <div class="favorite-body">
+            <div class="favorite-logo">${favoriteTeam.logo ? `<img src="${esc(favoriteTeam.logo)}" alt="${esc(abbr(favoriteTeam))}">` : ""}</div>
+            <div><div class="favorite-abbr">${esc(abbr(favoriteTeam))}</div><div class="favorite-record">${esc(record(favoriteTeam))}</div><div class="favorite-meta">#${esc(seed(favoriteTeam))} ${esc(favoriteTeam.conference || "")}</div></div>
+          </div>
+        </div>` : "";
+
+      const explicitHunt = allTeams.filter(t => yes(t?.in_the_hunt));
+      const hunt = explicitHunt.length
+        ? explicitHunt.slice(0, huntTeams * 2)
+        : [...afcSorted.slice(mainTeams, mainTeams + huntTeams), ...nfcSorted.slice(mainTeams, mainTeams + huntTeams)];
+      const huntRow = t => `
+        <div class="hunt-team ${fav(t) ? "hunt-favorite" : ""}">
+          <div class="hunt-logo">${t?.logo ? `<img src="${esc(t.logo)}" alt="${esc(abbr(t))}">` : ""}</div>
+          <div class="hunt-abbr">${esc(abbr(t))}</div>
+          <div class="hunt-record">${esc(record(t))}</div>
+          <div class="hunt-gb">${esc(gb(t) || `#${seed(t)}`)}</div>
+        </div>`;
+
+      let updatedText = "";
+      const updated = a.updated_at || a.last_successful_update || "";
+      if (updated) {
+        const d = new Date(updated);
+        if (!Number.isNaN(d.getTime())) updatedText = d.toLocaleString(undefined, {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"});
+      }
+
+      return `
+        <div class="po-shell">
+          <div class="hero">
+            <div class="brand">
+              <img class="nfl-logo" src="https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png" alt="NFL">
+              <div><div class="title">STANDINGS &</div><div class="title">PLAYOFF PICTURE</div><div class="week">${a.week ? `THROUGH WEEK ${esc(a.week)}` : esc(a.season || "NFL")}</div></div>
+            </div>
+            ${favoritePanel}
+          </div>
+          <div class="conferences">${conference("AFC", afcSorted)}${conference("NFC", nfcSorted)}</div>
+          ${hunt.length ? `<section class="hunt"><div class="hunt-title"><span></span><strong>IN THE HUNT</strong><span></span></div><div class="hunt-grid">${hunt.map(huntRow).join("")}</div></section>` : ""}
+          <div class="legend">
+            <div><b class="legend-win">W</b> WIN STREAK</div>
+            <div><b class="legend-loss">L</b> LOSS STREAK</div>
+            <div>🔒 CLINCHED DIVISION</div>
+            <div><b class="legend-star">★</b> CLINCHED PLAYOFF BERTH</div>
+            <div><b>GB</b> GAMES BACK</div>
+          </div>
+          <div class="footer"><span>TOP ${esc(cut)} SEEDS MAKE THE PLAYOFFS</span>${updatedText ? `<span>UPDATED ${esc(updatedText)}</span>` : ""}</div>
+        </div>`;
+    ]]]
+
+card_mod:
+  style: |
+    .po-shell {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      padding: clamp(18px, 3cqw, 34px);
+      color: #f7f9fc;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(183,22,36,.14), transparent 27%),
+        radial-gradient(circle at 85% 0%, rgba(0,103,205,.18), transparent 29%),
+        linear-gradient(180deg, #091321, #050a11 62%, #07101a);
+      font-family: var(--paper-font-body1_-_font-family);
+    }
+    .hero { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:24px; }
+    .brand { display:flex; align-items:center; gap:20px; min-width:0; }
+    .nfl-logo { width:clamp(60px,9cqw,100px); height:clamp(68px,10cqw,112px); object-fit:contain; filter:drop-shadow(0 6px 10px rgba(0,0,0,.3)); }
+    .title { font-size:clamp(27px,5.7cqw,60px); font-weight:1000; font-style:italic; line-height:.88; letter-spacing:-1.5px; text-shadow:0 3px 9px rgba(0,0,0,.48); }
+    .week { margin-top:12px; color:rgba(255,255,255,.65); font-size:clamp(9px,1.4cqw,14px); font-weight:850; font-style:italic; letter-spacing:2px; }
+    .favorite-panel { width:clamp(165px,25cqw,245px); flex:0 0 auto; padding:11px; box-sizing:border-box; border-radius:15px; background:linear-gradient(180deg,rgba(15,29,48,.94),rgba(5,12,21,.96)); border:1px solid rgba(255,255,255,.2); }
+    .favorite-label { color:#f6c64d; font-size:9px; font-weight:900; font-style:italic; letter-spacing:1.2px; }
+    .favorite-body { display:flex; align-items:center; gap:10px; margin-top:7px; }
+    .favorite-logo { width:54px; height:43px; display:flex; align-items:center; justify-content:center; }
+    .favorite-logo img { width:52px; height:41px; object-fit:contain; }
+    .favorite-abbr { font-size:clamp(22px,3.4cqw,34px); font-weight:1000; line-height:.9; }
+    .favorite-record { margin-top:5px; font-size:12px; font-weight:850; }
+    .favorite-meta { margin-top:2px; color:rgba(255,255,255,.52); font-size:8px; font-weight:800; }
+    .conferences { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:clamp(12px,2cqw,20px); }
+    .conference { min-width:0; overflow:hidden; border-radius:16px; background:rgba(4,10,17,.72); border:1px solid rgba(255,255,255,.1); }
+    .afc { --conf:#ef233c; border-color:rgba(239,35,60,.58); }
+    .nfc { --conf:#2997ff; border-color:rgba(41,151,255,.58); }
+    .conference-header { min-height:70px; display:flex; align-items:center; gap:14px; padding:9px 15px; box-sizing:border-box; background:linear-gradient(180deg,color-mix(in srgb,var(--conf) 25%,rgba(8,15,26,.96)),rgba(5,11,18,.94)); border-bottom:1px solid color-mix(in srgb,var(--conf) 55%,transparent); }
+    .conference-mark { width:44px; height:44px; display:flex; align-items:center; justify-content:center; color:white; border:2px solid var(--conf); border-radius:9px; font-size:30px; font-weight:1000; font-style:italic; }
+    .conference-name { font-size:clamp(24px,3.8cqw,36px); font-weight:1000; font-style:italic; }
+    .column-labels { display:grid; grid-template-columns:38px minmax(95px,1fr) 56px 44px minmax(60px,.8fr); gap:5px; align-items:center; min-height:26px; padding:0 9px; color:rgba(255,255,255,.43); font-size:7px; font-weight:850; font-style:italic; text-align:center; }
+    .column-labels span:nth-child(2) { text-align:left; }
+    .section-label { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; min-height:24px; padding:0 9px; }
+    .section-label span { height:1px; background:color-mix(in srgb,var(--conf) 68%,transparent); }
+    .section-label strong { color:var(--conf); font-size:8px; font-weight:950; font-style:italic; letter-spacing:1.1px; }
+    .section-outside strong { color:rgba(255,255,255,.55); }
+    .section-outside span { border-top:1px dashed var(--conf); background:transparent; }
+    .team-row { display:grid; grid-template-columns:38px 37px minmax(65px,1fr) 56px 44px minmax(60px,.8fr); align-items:center; gap:5px; min-height:45px; margin:0 6px 4px; padding:3px 7px; box-sizing:border-box; border-radius:7px; background:linear-gradient(180deg,rgba(17,28,41,.72),rgba(7,14,23,.72)); border:1px solid rgba(255,255,255,.07); }
+    .favorite-row { background:linear-gradient(90deg,rgba(104,255,45,.15),rgba(8,22,15,.78)); border-color:rgba(103,255,42,.68); }
+    .seed { width:31px; height:31px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:white; background:linear-gradient(180deg,color-mix(in srgb,var(--conf) 82%,#fff),color-mix(in srgb,var(--conf) 65%,#05090f)); font-size:16px; font-weight:1000; font-style:italic; }
+    .outside .seed { background:linear-gradient(180deg,#27313d,#121820); box-shadow:inset 0 0 0 1px rgba(255,255,255,.12); }
+    .team-logo { width:35px; height:31px; display:flex; align-items:center; justify-content:center; }
+    .team-logo img { width:34px; height:29px; object-fit:contain; }
+    .team-info { min-width:0; }
+    .team-main { display:flex; align-items:center; gap:5px; min-width:0; }
+    .team-abbr { font-size:clamp(13px,1.8cqw,17px); font-weight:1000; font-style:italic; white-space:nowrap; }
+    .team-division { margin-top:1px; color:rgba(255,255,255,.34); font-size:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .favorite-tag { padding:2px 4px; border-radius:3px; color:#8cff4c; background:rgba(84,255,42,.08); font-size:5px; font-weight:950; white-space:nowrap; }
+    .record { font-size:clamp(11px,1.5cqw,15px); font-weight:900; text-align:center; font-variant-numeric:tabular-nums; }
+    .streak { color:rgba(255,255,255,.68); font-size:clamp(10px,1.4cqw,14px); font-weight:950; font-style:italic; text-align:center; }
+    .streak.win { color:#66e52f; }
+    .streak.loss { color:#ff3737; }
+    .status { min-width:0; display:flex; align-items:center; justify-content:center; text-align:center; }
+    .clinch { color:rgba(255,255,255,.82); font-size:6px; font-weight:900; font-style:italic; line-height:1.1; }
+    .gb { color:rgba(255,255,255,.58); font-size:7px; font-weight:800; white-space:nowrap; }
+    .dash { color:rgba(255,255,255,.25); }
+    .hunt { margin-top:16px; padding:11px; border-radius:15px; background:linear-gradient(180deg,rgba(12,23,36,.94),rgba(6,13,22,.92)); border:1px solid rgba(255,255,255,.13); }
+    .hunt-title { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; margin-bottom:10px; }
+    .hunt-title span { height:1px; background:rgba(255,255,255,.28); }
+    .hunt-title strong { font-size:clamp(15px,2.3cqw,23px); font-weight:1000; font-style:italic; }
+    .hunt-grid { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:6px; }
+    .hunt-team { min-width:0; padding:7px 4px; border-radius:9px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.08); text-align:center; }
+    .hunt-favorite { border-color:rgba(113,255,52,.62); background:rgba(79,255,35,.08); }
+    .hunt-logo { height:31px; display:flex; align-items:center; justify-content:center; }
+    .hunt-logo img { width:39px; height:29px; object-fit:contain; }
+    .hunt-abbr { margin-top:2px; font-size:12px; font-weight:950; font-style:italic; }
+    .hunt-record { margin-top:2px; color:rgba(255,255,255,.72); font-size:9px; font-weight:800; }
+    .hunt-gb { margin-top:2px; color:rgba(255,255,255,.43); font-size:7px; font-style:italic; }
+    .legend { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:10px 20px; margin-top:14px; padding:10px 12px; border-radius:10px; color:rgba(255,255,255,.57); background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.07); font-size:7px; font-weight:800; font-style:italic; }
+    .legend b { margin-right:4px; }
+    .legend-win { color:#75ef39; }
+    .legend-loss { color:#ff4141; }
+    .legend-star { color:#49a7ff; }
+    .footer { display:flex; justify-content:space-between; gap:12px; margin-top:10px; color:rgba(255,255,255,.34); font-size:7px; font-weight:750; font-style:italic; }
+    .po-empty { min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; padding:24px; color:white; }
+    .po-empty strong { font-size:20px; }
+    .po-empty span { color:rgba(255,255,255,.55); font-size:11px; }
+
+    @container (max-width: 800px) {
+      .favorite-panel { width:180px; }
+      .favorite-tag { display:none; }
+      .hunt-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    }
+
+    @container (max-width: 600px) {
+      .po-shell { padding:13px; }
+      .hero { display:block; }
+      .brand { justify-content:center; }
+      .title { font-size:29px; }
+      .week { font-size:9px; }
+      .favorite-panel { width:100%; margin-top:14px; }
+      .favorite-body { justify-content:center; }
+      .conferences { grid-template-columns:1fr; }
+      .team-division { display:none; }
+      .hunt-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+      .legend { justify-content:flex-start; }
+      .footer { flex-direction:column; gap:4px; }
+    }
+
+    @container (max-width: 420px) {
+      .nfl-logo { width:52px; height:60px; }
+      .title { font-size:23px; }
+      .column-labels { grid-template-columns:31px minmax(75px,1fr) 45px 34px 47px; font-size:5px; }
+      .team-row { grid-template-columns:31px 30px minmax(48px,1fr) 45px 34px 47px; padding:3px 4px; }
+      .seed { width:26px; height:26px; font-size:13px; }
+      .team-logo { width:29px; height:26px; }
+      .team-logo img { width:28px; height:24px; }
+      .team-abbr { font-size:11px; }
+      .record { font-size:10px; }
+      .streak { font-size:9px; }
+      .clinch, .gb { font-size:5px; }
+      .hunt-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+```
+
+</details>
+
 ## 🛠️ Troubleshooting
+
+### Standings / Playoff Picture is empty
+
+Confirm that `sensor.espn_nfl_standings_raw` exists and contains both `attributes.conferences.AFC` and `attributes.conferences.NFC`. During preseason or early regular-season weeks, playoff helper fields such as `in_the_hunt` and clinch flags can legitimately be `null`.
 
 ### Next Game card shows no favorite
 

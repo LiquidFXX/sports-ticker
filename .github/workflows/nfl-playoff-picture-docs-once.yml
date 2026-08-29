@@ -1,0 +1,89 @@
+name: Finalize NFL playoff picture docs
+
+on:
+  push:
+    paths:
+      - '.github/workflows/nfl-playoff-picture-docs-once.yml'
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Add screenshot and update NFL examples
+        shell: bash
+        run: |
+          mkdir -p examples/images/NFL
+          base64 -d .github/nfl_playoff_picture_docs.b64 > examples/images/NFL/nfl_standings_playoff_picture.webp
+
+          python - <<'PY'
+          from pathlib import Path
+
+          md = Path('examples/NFL.md')
+          card_path = Path('examples/nfl_standings_playoff_picture_card.yaml')
+          text = md.read_text(encoding='utf-8')
+          card = card_path.read_text(encoding='utf-8').rstrip()
+
+          old_intro = '''```yaml
+          sensor.espn_nfl_scoreboard_raw
+          sensor.espn_nfl_next_game
+          ```'''.replace('          ', '')
+          new_intro = '''```yaml
+          sensor.espn_nfl_scoreboard_raw
+          sensor.espn_nfl_next_game
+          sensor.espn_nfl_standings_raw
+          ```'''.replace('          ', '')
+          if 'sensor.espn_nfl_standings_raw' not in text[:1800] and old_intro in text:
+              text = text.replace(old_intro, new_intro, 1)
+
+          scoreboard_row = '| `sensor.espn_nfl_scoreboard_raw` | Full NFL scoreboard, highlights, alerts, and per-team game leaders |'
+          standings_row = '| `sensor.espn_nfl_standings_raw` | AFC/NFC standings, playoff seeds, wild cards, favorite-team status, streaks, games back, and ESPN clinch data |'
+          if standings_row not in text and scoreboard_row in text:
+              text = text.replace(scoreboard_row, scoreboard_row + '\n' + standings_row, 1)
+
+          row6 = '| 6. Game Leaders | Away/home passing, rushing, receiving, sacks, and tackles leaders | `sensor.espn_nfl_scoreboard_raw` |'
+          row7 = '| 7. Standings & Playoff Picture | AFC/NFC seeds, division leaders, wild cards, playoff cut line, favorite team, and teams in the hunt | `sensor.espn_nfl_standings_raw` |'
+          if row7 not in text:
+              if row6 not in text:
+                  raise SystemExit('NFL layout row 6 not found')
+              text = text.replace(row6, row6 + '\n' + row7, 1)
+
+          if '## 7. Standings & Playoff Picture' not in text:
+              section = f'''\n---\n\n## 7. Standings & Playoff Picture\n\nA full NFL playoff-race dashboard powered by `sensor.espn_nfl_standings_raw`. It renders the AFC and NFC side by side with the current seeds, division leaders, wild cards, the playoff cut line, teams immediately outside the field, favorite-team highlighting, streaks, games back, and ESPN clinch status when available.\n\n<img src="images/NFL/nfl_standings_playoff_picture.webp" alt="NFL Standings and Playoff Picture card example" width="520">\n\n> **New user notes**\n> - Requires **Sports Ticker 0.20.3-alpha.1 or newer**, `custom:button-card`, and `card-mod`.\n> - Uses `sensor.espn_nfl_standings_raw`; no NFL teams or records are hard-coded.\n> - `main_teams: 9` controls how many teams appear in each conference panel. The top seven remain the playoff field; seeds below the cut line appear under **Outside the Playoffs**.\n> - `hunt_teams: 4` controls how many additional teams per conference can appear in the **In the Hunt** rail.\n> - The configured NFL favorite is highlighted automatically from the sensor's `favorite_team` / `favorite` fields.\n> - Division leaders, wild cards, playoff position, streak, and games-back values come directly from the normalized standings attributes.\n> - Clinch indicators only appear when ESPN supplies a corresponding normalized clinch flag; the card does not invent clinched status.\n> - Early in the season ESPN can leave `in_the_hunt` as `null`. Until that flag is populated, the card falls back to the next teams immediately below the main conference rows so the rail remains useful.\n> - The reusable card is also stored in [`nfl_standings_playoff_picture_card.yaml`](nfl_standings_playoff_picture_card.yaml).\n\n<details>\n<summary>Copy YAML</summary>\n\n```yaml\n{card}\n```\n\n</details>\n\n'''
+              marker = '## 🛠️ Troubleshooting'
+              if marker in text:
+                  text = text.replace(marker, section + marker, 1)
+              else:
+                  text = text.rstrip() + '\n' + section
+
+          trouble = '''### Standings / Playoff Picture is empty\n\nConfirm that `sensor.espn_nfl_standings_raw` exists and contains both `attributes.conferences.AFC` and `attributes.conferences.NFC`. During preseason or early regular-season weeks, playoff helper fields such as `in_the_hunt` and clinch flags can legitimately be `null`.\n\n'''
+          if '### Standings / Playoff Picture is empty' not in text:
+              marker = '## 🛠️ Troubleshooting\n\n'
+              if marker in text:
+                  text = text.replace(marker, marker + trouble, 1)
+
+          md.write_text(text, encoding='utf-8')
+          PY
+
+          rm -f .github/nfl_playoff_picture_docs.b64
+          rm -f .github/workflows/nfl-playoff-picture-docs-once.yml
+
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'Add NFL standings playoff picture example'
+          git push origin HEAD:main

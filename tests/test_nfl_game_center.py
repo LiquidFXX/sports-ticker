@@ -1,11 +1,24 @@
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
 import unittest
 
-from custom_components.sports_ticker.nfl_game_center import (
-    empty_game_center,
-    extract_nfl_game_center,
-    game_center_have_data,
-    merge_game_center_fallback,
+MODULE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "custom_components"
+    / "sports_ticker"
+    / "nfl_game_center.py"
 )
+spec = importlib.util.spec_from_file_location("nfl_game_center", MODULE_PATH)
+module = importlib.util.module_from_spec(spec)
+assert spec and spec.loader
+spec.loader.exec_module(module)
+
+empty_game_center = module.empty_game_center
+extract_nfl_game_center = module.extract_nfl_game_center
+game_center_have_data = module.game_center_have_data
+merge_game_center_fallback = module.merge_game_center_fallback
 
 
 def _competition():

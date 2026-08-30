@@ -20,6 +20,9 @@ from .const import (
     TEAM_OPTIONS,
 )
 
+from .football_schedule import normalize_recent_games, recent_form
+
+
 _LOGGER = logging.getLogger(__name__)
 
 FOOTBALL_LEAGUES: dict[str, dict[str, str]] = {
@@ -94,6 +97,8 @@ class FootballNextGameCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return {
                 "favorite_team": None,
                 "event": None,
+                "recent_games": [],
+                "recent_form": None,
                 "_sports_ticker_meta": {
                     "stale": False,
                     "source": "config",
@@ -124,9 +129,12 @@ class FootballNextGameCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 raise ValueError("ESPN team schedule did not contain an events list")
 
             event = self._find_next_event(events, favorite)
+            recent_games = normalize_recent_games(events, favorite, limit=5)
             data = {
                 "favorite_team": favorite,
                 "event": event,
+                "recent_games": recent_games,
+                "recent_form": recent_form(recent_games),
                 "_sports_ticker_meta": {
                     "stale": False,
                     "source": "espn",
@@ -166,6 +174,8 @@ class FootballNextGameCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return {
                 "favorite_team": favorite,
                 "event": None,
+                "recent_games": [],
+                "recent_form": None,
                 "_sports_ticker_meta": {
                     "stale": True,
                     "source": "espn",
@@ -289,6 +299,9 @@ class ESPNFootballNextGame(CoordinatorEntity[FootballNextGameCoordinator], Senso
             "favorite_team": favorite,
             "favorite_team_name": self._favorite_team_name(favorite),
             "has_upcoming_game": isinstance(event, dict),
+            "recent_games": data.get("recent_games", []),
+            "last_five": data.get("recent_games", []),
+            "recent_form": data.get("recent_form"),
             "stale": bool(meta.get("stale", False)),
             "source": meta.get("source"),
             "last_successful_update": meta.get("last_successful_update"),

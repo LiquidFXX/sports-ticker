@@ -149,6 +149,36 @@ def _team_row(
     ties = _stat_int(_get(stats, "ties"))
     win_percentage = _stat_float(_get(stats, "winpercent", "winpercentage"))
 
+    games_played = (
+        wins + losses + (ties or 0)
+        if wins is not None and losses is not None
+        else None
+    )
+    points_for = _stat_float(_get(stats, "pointsfor", "points", "pf"))
+    points_against = _stat_float(_get(stats, "pointsagainst", "pa"))
+    differential_stat = _get(stats, "pointdifferential", "differential", "pointdiff")
+    point_differential = _stat_float(differential_stat)
+    point_differential_source = "espn_stat" if point_differential is not None else None
+    if point_differential is None and points_for is not None and points_against is not None:
+        point_differential = points_for - points_against
+        point_differential_source = "derived_from_espn_points"
+
+    points_per_game = (
+        round(points_for / games_played, 1)
+        if points_for is not None and games_played
+        else None
+    )
+    points_allowed_per_game = (
+        round(points_against / games_played, 1)
+        if points_against is not None and games_played
+        else None
+    )
+
+    home_record = _display(_get(stats, "home", "homerecord"))
+    away_record = _display(_get(stats, "road", "away", "roadrecord", "awayrecord"))
+    division_record = _display(_get(stats, "division", "divisionrecord", "divrecord", "vsdivision"))
+    conference_record = _display(_get(stats, "conference", "conferencerecord", "confrecord", "vsconference"))
+
     record_stat = _get(stats, "overall", "overallrecord", "record")
     record = _display(record_stat)
     record_source = "espn_stat" if record else None
@@ -200,6 +230,16 @@ def _team_row(
         "ties": ties,
         "record": record,
         "win_percentage": win_percentage,
+        "games_played": games_played,
+        "points_for": points_for,
+        "points_against": points_against,
+        "point_differential": point_differential,
+        "points_per_game": points_per_game,
+        "points_allowed_per_game": points_allowed_per_game,
+        "home_record": home_record,
+        "away_record": away_record,
+        "division_record": division_record,
+        "conference_record": conference_record,
         "conference": conference,
         "division": division,
         "division_rank": division_rank,
@@ -229,6 +269,15 @@ def _team_row(
         "sources": {
             "seed": "espn_stat" if seed_stat is not None else None,
             "record": record_source,
+            "points_for": "espn_stat" if points_for is not None else None,
+            "points_against": "espn_stat" if points_against is not None else None,
+            "point_differential": point_differential_source,
+            "points_per_game": "derived_from_espn_points_and_wlt" if points_per_game is not None else None,
+            "points_allowed_per_game": "derived_from_espn_points_and_wlt" if points_allowed_per_game is not None else None,
+            "home_record": "espn_stat" if home_record else None,
+            "away_record": "espn_stat" if away_record else None,
+            "division_record": "espn_stat" if division_record else None,
+            "conference_record": "espn_stat" if conference_record else None,
             "division_rank": division_rank_source,
             "conference_rank": conference_rank_source,
             "division_leader": "derived_from_division_rank" if division_rank is not None else None,

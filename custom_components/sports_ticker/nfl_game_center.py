@@ -76,11 +76,7 @@ def game_center_have_data(value: Any) -> bool:
         return False
     if value.get("available") is True:
         return True
-    for section in ("situation", "last_play", "win_probability", "current_drive"):
-        data = value.get(section)
-        if isinstance(data, dict) and any(item is not None for item in data.values()):
-            return True
-    return False
+    return _contains_useful_data(value)
 
 
 def get_event_game_center(event: Any) -> dict[str, Any] | None:

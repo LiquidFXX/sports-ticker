@@ -370,7 +370,7 @@ card_mod:
 
 A polished MLB schedule card that sorts favorite-team games first, then live games, upcoming games, and finals. Set your favorite team with `fav: ATL`.
 
-<img width="592" height="561" alt="MLB what's on tonight example" src="https://github.com/user-attachments/assets/70082f86-3dc1-4a42-a6d6-d01cb126863f" />
+<img width="592"  alt="MLB what's on tonight example" src="https://github.com/user-attachments/assets/70082f86-3dc1-4a42-a6d6-d01cb126863f" />
 
 <details>
 <summary>Copy YAML</summary>
@@ -657,7 +657,7 @@ variables:
   favorite: ATL
 ```
 
-<img width="475" height="1227" alt="MLB gamecast example" src="https://github.com/user-attachments/assets/56be2ed7-7f1e-4f3d-8794-a5ef4189ab4e" />
+<img width="475"  alt="MLB gamecast example" src="https://github.com/user-attachments/assets/56be2ed7-7f1e-4f3d-8794-a5ef4189ab4e" />
 
 <details>
 <summary>Copy YAML</summary>

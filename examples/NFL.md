@@ -10836,7 +10836,7 @@ card_mod:
 
 A full NFL playoff-race dashboard powered by `sensor.espn_nfl_standings_raw`. It renders the AFC and NFC side by side with the current seeds, division leaders, wild cards, the playoff cut line, teams immediately outside the field, favorite-team highlighting, streaks, games back, and ESPN clinch status when available.
 
-<img src="images/NFL/nfl_standings_playoff_picture.webp" alt="NFL Standings and Playoff Picture card example" width="520">
+<img src="images/NFL/nfl_standings_playoff_picture.png" alt="NFL Standings and Playoff Picture card example" width="520">
 
 > **New user notes**
 > - Requires **Sports Ticker 0.20.3-alpha.1 or newer**, `custom:button-card`, and `card-mod`.

@@ -33,6 +33,14 @@ from .nfl_team_leaders import (
     team_leaders_have_data,
 )
 
+from .nfl_game_center import (
+    empty_game_center,
+    game_center_have_data,
+    get_event_game_center,
+    merge_game_center_fallback,
+    merge_nfl_game_center,
+)
+
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_LEAGUES = ["mlb", "nfl"]
@@ -171,7 +179,7 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     raise ValueError(f"Invalid ESPN payload for {league}")
 
                 if league == "nfl":
-                    await self._enrich_nfl_team_leaders(payload, previous)
+                    await self._enrich_nfl_event_details(payload, previous)
 
                 now = dt_util.utcnow().isoformat()
 
@@ -262,12 +270,12 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         return payload
 
-    async def _enrich_nfl_team_leaders(
+    async def _enrich_nfl_event_details(
         self,
         payload: dict[str, Any],
         previous: dict[str, Any] | None = None,
     ) -> None:
-        """Enrich NFL scoreboard events with away/home box-score leaders."""
+        """Enrich NFL scoreboard events with leaders and live game-center data."""
         events = payload.get("events")
         if not isinstance(events, list):
             return
@@ -293,8 +301,12 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if not isinstance(competition, dict):
                 continue
 
-            # Always expose a predictable structure, including scheduled games.
+            # Always expose predictable structures, including scheduled games.
             competition["team_leaders"] = empty_team_leaders()
+            competition["game_center"] = empty_game_center()
+            # Normalize any live situation already present on the scoreboard.
+            # The summary response below adds win probability and drive detail.
+            merge_nfl_game_center(event, {})
 
             event_id = str(event.get("id") or "").strip()
             if not event_id:
@@ -312,6 +324,7 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             cached_event = previous_events.get(event_id)
             cached = get_event_team_leaders(cached_event)
+            cached_game_center = get_event_game_center(cached_event)
             cached_status = (
                 cached_event.get("status")
                 if isinstance(cached_event, dict)
@@ -344,8 +357,10 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 state == "post"
                 and cached_state == "post"
                 and team_leaders_have_data(cached)
+                and game_center_have_data(cached_game_center)
             ):
                 competition["team_leaders"] = cached
+                competition["game_center"] = cached_game_center
                 continue
 
             try:
@@ -353,10 +368,17 @@ class SportsTickerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     NFL_SUMMARY_URL.format(event_id=event_id)
                 )
                 merge_nfl_team_leaders(event, summary)
+                merge_nfl_game_center(event, summary)
             except Exception as err:
                 # A failed summary must never blank the whole NFL scoreboard.
                 if team_leaders_have_data(cached):
                     competition["team_leaders"] = cached
+                current_game_center = get_event_game_center(event)
+                if game_center_have_data(cached_game_center):
+                    competition["game_center"] = merge_game_center_fallback(
+                        current_game_center,
+                        cached_game_center,
+                    )
                 _LOGGER.warning(
                     "Failed to update NFL team leaders for event %s. Error: %s",
                     event_id,

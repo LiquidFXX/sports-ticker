@@ -18,12 +18,10 @@ LOGGER = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 FRONTEND_URL = "/sports-ticker/frontend"
 CARD_FILENAME = "sports-ticker-card-v2.js"
-EDITOR_FILENAME = "sports-ticker-card-editor-v2.js"
-EDITOR_STABILITY_FILENAME = "sports-ticker-card-editor-stability.js"
-CARD_VERSION = "0.6.2"
+EDITOR_FILENAME = "sports-ticker-card-editor-v3.js"
+CARD_VERSION = "0.7.0"
 CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}"
-EDITOR_URL = f"{FRONTEND_URL}/{EDITOR_FILENAME}"
-EDITOR_STABILITY_URL = f"{FRONTEND_URL}/{EDITOR_STABILITY_FILENAME}?v={CARD_VERSION}"
+EDITOR_URL = f"{FRONTEND_URL}/{EDITOR_FILENAME}?v={CARD_VERSION}"
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -39,7 +37,6 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
     """Serve and load the bundled Sports Ticker dashboard card."""
     card_path = FRONTEND_DIR / CARD_FILENAME
     editor_path = FRONTEND_DIR / EDITOR_FILENAME
-    stability_path = FRONTEND_DIR / EDITOR_STABILITY_FILENAME
     if not card_path.exists():
         LOGGER.warning("Bundled Sports Ticker card was not found at %s; dashboard card will not be available", card_path)
         return
@@ -48,8 +45,6 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
     add_extra_js_url(hass, CARD_URL)
     if editor_path.exists():
         add_extra_js_url(hass, EDITOR_URL)
-        if stability_path.exists():
-            add_extra_js_url(hass, EDITOR_STABILITY_URL)
     else:
         LOGGER.warning("Bundled Sports Ticker card editor was not found at %s; graphical configuration will not be available", editor_path)
 

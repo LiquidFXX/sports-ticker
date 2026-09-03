@@ -17,11 +17,11 @@ LOGGER = logging.getLogger(__name__)
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 FRONTEND_URL = "/sports-ticker/frontend"
-CARD_FILENAME = "sports-ticker-card.js"
-EDITOR_FILENAME = "sports-ticker-card-editor.js"
-CARD_VERSION = "0.5.3"
-CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}?v={CARD_VERSION}"
-EDITOR_URL = f"{FRONTEND_URL}/{EDITOR_FILENAME}?v={CARD_VERSION}"
+CARD_FILENAME = "sports-ticker-card-v2.js"
+EDITOR_FILENAME = "sports-ticker-card-editor-v2.js"
+CARD_VERSION = "0.6.0"
+CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}"
+EDITOR_URL = f"{FRONTEND_URL}/{EDITOR_FILENAME}"
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 

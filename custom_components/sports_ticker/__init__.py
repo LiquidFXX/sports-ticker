@@ -19,7 +19,7 @@ FRONTEND_DIR = Path(__file__).parent / "frontend"
 FRONTEND_URL = "/sports-ticker/frontend"
 CARD_FILENAME = "sports-ticker-card.js"
 EDITOR_FILENAME = "sports-ticker-card-editor.js"
-CARD_VERSION = "0.5.0"
+CARD_VERSION = "0.5.1"
 CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}?v={CARD_VERSION}"
 EDITOR_URL = f"{FRONTEND_URL}/{EDITOR_FILENAME}?v={CARD_VERSION}"
 

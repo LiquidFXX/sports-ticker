@@ -341,6 +341,10 @@ The stable release is **v0.20.1**. The current prerelease line is **v0.20.3-alph
 
 This alpha adds the normalized NFL standings and playoff-picture source while keeping the existing scoreboard, favorite-team next-game, rankings, leader, and entity IDs backward-compatible.
 
+### Planned soccer expansion
+
+- 🇳🇱 **Dutch Eredivisie** (`NED.1`) — planned for an upcoming soccer-focused feature line. Initial scope: league scoreboard/events, favorite-team support, and ticker/card compatibility, with standings added where ESPN data can be normalized reliably.
+
 Future feature lines are planned around seasonal timing, with College Basketball, Tennis, Rugby, Formula 1, AFL, Cricket, MotoGP, IndyCar, college baseball/softball, and additional sports under consideration.
 
 ---

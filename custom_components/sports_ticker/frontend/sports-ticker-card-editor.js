@@ -1,4 +1,4 @@
-const SPORTS_TICKER_EDITOR_VERSION = "0.2.0";
+const SPORTS_TICKER_EDITOR_VERSION = "0.3.0";
 
 const ST_SPORTS = {
   nfl: { label: "NFL", entity: "sensor.espn_nfl_scoreboard_raw" },
@@ -66,55 +66,58 @@ class SportsTickerCardEditor extends HTMLElement {
       : availableKeys.slice(0, 1);
 
     const sportOptions = available.map(([key, sport]) => `<option value="${key}">${sport.label}</option>`).join("");
-    const sportChecks = available.map(([key, sport]) => `<label class="check"><input type="checkbox" data-sport="${key}" ${selectedSports.includes(key) ? "checked" : ""}><span>${sport.label}</span></label>`).join("");
+    const sportChecks = available.map(([key, sport]) => `<label class="league-chip"><input type="checkbox" data-sport="${key}" ${selectedSports.includes(key) ? "checked" : ""}><span>${sport.label}</span></label>`).join("");
 
     this.shadowRoot.innerHTML = `
       <style>
         :host{display:block;color:var(--primary-text-color);font-family:var(--paper-font-body1_-_font-family,inherit)}
-        .editor{display:grid;gap:22px;padding:4px 2px 18px}.section{display:grid;gap:13px}.section+.section{padding-top:20px;border-top:1px solid var(--divider-color)}
-        .eyebrow{font-size:11px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--secondary-text-color)}
-        .field{display:grid;gap:7px}.label{font-size:13px;font-weight:650}.helper{font-size:12px;line-height:1.45;color:var(--secondary-text-color)}
-        select,input[type="number"],input[type="text"]{width:100%;box-sizing:border-box;min-height:48px;padding:10px 13px;border:1px solid var(--divider-color);border-radius:10px;background:var(--card-background-color,var(--ha-card-background));color:var(--primary-text-color);font:inherit}
-        .options{display:grid}.toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px;border-bottom:1px solid color-mix(in srgb,var(--divider-color) 70%,transparent);font-size:14px}.toggle:last-child{border-bottom:0}.toggle input,.check input{width:19px;height:19px;margin:0;accent-color:var(--primary-color)}
-        .checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}.check{display:flex;align-items:center;gap:9px;min-height:38px;padding:0 4px;font-size:13px}
-        .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.advanced{border:1px solid var(--divider-color);border-radius:11px;overflow:hidden}.advanced-button{width:100%;min-height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border:0;background:transparent;color:var(--primary-text-color);font:inherit;font-weight:650;cursor:pointer}.advanced-body{display:grid;gap:13px;padding:14px;border-top:1px solid var(--divider-color)}
-        .empty{padding:13px;border:1px dashed var(--divider-color);border-radius:10px;color:var(--secondary-text-color);font-size:13px}.auto{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.45;color:var(--secondary-text-color)}.auto ha-icon{--mdc-icon-size:17px;margin-top:1px;color:var(--primary-color)}
-        @media(max-width:520px){.row{grid-template-columns:1fr}}
+        *{box-sizing:border-box}.editor{display:grid;gap:0;padding:2px 10px 22px}.section{display:grid;gap:16px;padding:22px 0}.section:first-child{padding-top:8px}.section+.section{border-top:1px solid var(--divider-color)}
+        .eyebrow{font-size:12px;font-weight:800;letter-spacing:.105em;text-transform:uppercase;color:var(--secondary-text-color)}
+        .field{display:grid;gap:8px}.label-row{display:flex;align-items:center;gap:6px}.label{font-size:14px;font-weight:650}.label-row ha-icon{--mdc-icon-size:17px;color:var(--secondary-text-color)}.helper{font-size:12px;line-height:1.45;color:var(--secondary-text-color)}
+        .select-wrap{position:relative}.select-wrap ha-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;--mdc-icon-size:20px;color:var(--secondary-text-color)}
+        select,input[type="number"],input[type="text"]{width:100%;min-height:52px;padding:0 44px 0 14px;border:1px solid var(--divider-color);border-radius:11px;background:var(--card-background-color,var(--ha-card-background));color:var(--primary-text-color);font:inherit;font-size:15px;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
+        input[type="number"],input[type="text"]{padding-right:14px}select{appearance:none;-webkit-appearance:none;cursor:pointer}select:focus,input:focus{border-color:var(--primary-color);box-shadow:0 0 0 1px var(--primary-color)}
+        .options{display:grid}.toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:52px;border-bottom:1px solid color-mix(in srgb,var(--divider-color) 75%,transparent);font-size:14px}.toggle:last-child{border-bottom:0}.toggle-text{display:flex;align-items:center;gap:10px}.toggle-text ha-icon{--mdc-icon-size:19px;color:var(--secondary-text-color)}
+        .switch{position:relative;width:48px;height:28px;flex:0 0 48px}.switch input{position:absolute;opacity:0;pointer-events:none}.slider{position:absolute;inset:0;border-radius:999px;background:var(--disabled-color,#9e9e9e);transition:.18s ease;cursor:pointer}.slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;border-radius:50%;background:var(--card-background-color,#fff);box-shadow:0 1px 3px rgba(0,0,0,.35);transition:.18s ease}.switch input:checked+.slider{background:var(--primary-color)}.switch input:checked+.slider:before{transform:translateX(20px)}
+        .league-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:9px}.league-chip{position:relative;min-height:42px;display:flex;align-items:center;justify-content:center;padding:0 10px;border:1px solid var(--divider-color);border-radius:10px;background:var(--card-background-color,var(--ha-card-background));font-size:13px;font-weight:650;cursor:pointer}.league-chip input{position:absolute;opacity:0}.league-chip:has(input:checked){border-color:var(--primary-color);background:color-mix(in srgb,var(--primary-color) 10%,var(--card-background-color,var(--ha-card-background)));color:var(--primary-color)}
+        .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.advanced{margin-top:2px;border:1px solid var(--divider-color);border-radius:11px;overflow:hidden;background:var(--card-background-color,var(--ha-card-background))}.advanced-button{width:100%;min-height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 15px;border:0;background:transparent;color:var(--primary-text-color);font:inherit;font-size:14px;font-weight:650;cursor:pointer}.advanced-button ha-icon{--mdc-icon-size:21px;color:var(--secondary-text-color)}.advanced-body{display:grid;gap:15px;padding:16px;border-top:1px solid var(--divider-color)}
+        .empty{padding:13px;border:1px dashed var(--divider-color);border-radius:10px;color:var(--secondary-text-color);font-size:13px}.auto{display:flex;align-items:flex-start;gap:8px;padding-top:1px;font-size:12px;line-height:1.45;color:var(--secondary-text-color)}.auto ha-icon{--mdc-icon-size:17px;margin-top:1px;color:var(--primary-color)}
+        @media(max-width:520px){.editor{padding-left:4px;padding-right:4px}.row{grid-template-columns:1fr}}
       </style>
       <div class="editor">
         <section class="section">
           <div class="eyebrow">Basic setup</div>
-          <div class="field"><div class="label">Card type</div><select id="card-type"><option value="game">Game</option><option value="ticker">Multi-Sport Ticker</option></select></div>
+          ${this._selectField("Card type", "card-type", '<option value="game">Game</option><option value="ticker">Multi-Sport Ticker</option>', "Choose the type of Sports Ticker card to configure.")}
           ${available.length ? "" : '<div class="empty">No enabled Sports Ticker scoreboard sensors were found. Enable at least one sport in the integration options.</div>'}
           ${isTicker ? `
-            <div class="field"><div class="label">Sports / Leagues</div><div class="checks">${sportChecks}</div><div class="helper">Only leagues enabled in the Sports Ticker integration are shown.</div></div>
+            <div class="field"><div class="label-row"><div class="label">Sports / Leagues</div><ha-icon icon="mdi:help-circle-outline"></ha-icon></div><div class="league-grid">${sportChecks}</div><div class="helper">Only leagues enabled in the Sports Ticker integration are shown.</div></div>
           ` : `
-            <div class="field"><div class="label">Sport / League</div><select id="sport">${sportOptions}</select></div>
-            <div class="field"><div class="label">Layout</div><select id="layout"><option value="standard">Standard</option><option value="compact">Compact</option></select></div>
-            <div class="auto"><ha-icon icon="mdi:information-outline"></ha-icon><span>The card automatically uses the selected league's Sports Ticker scoreboard data.</span></div>
+            ${this._selectField("Sport / League", "sport", sportOptions, "Only enabled Sports Ticker leagues are available.")}
+            ${this._selectField("Layout", "layout", '<option value="standard">Standard</option><option value="compact">Compact</option>')}
+            <div class="auto"><ha-icon icon="mdi:information-outline"></ha-icon><span>The card automatically uses the selected league's scoreboard data. No entity selection is required.</span></div>
           `}
         </section>
 
         ${isTicker ? `
           <section class="section"><div class="eyebrow">Ticker options</div><div class="options">
-            ${this._toggle("show-logos", "Show team logos", this._config.show_logos !== false)}
-            ${this._toggle("pause-hover", "Pause on hover", this._config.ticker_pause_on_hover !== false)}
+            ${this._toggle("show-logos", "Show team logos", "mdi:image-outline", this._config.show_logos !== false)}
+            ${this._toggle("pause-hover", "Pause on hover", "mdi:pause-circle-outline", this._config.ticker_pause_on_hover !== false)}
           </div><div class="row">
-            <div class="field"><div class="label">Seconds per game</div><input id="speed" type="number" min="3" max="20" step="1" value="${Number(this._config.ticker_seconds_per_game) || 8}"><div class="helper">Higher values scroll more slowly.</div></div>
-            <div class="field"><div class="label">Maximum games per sport</div><input id="max-games" type="number" min="1" max="30" step="1" value="${Number(this._config.ticker_max_games_per_sport) || 20}"></div>
+            <div class="field"><div class="label-row"><div class="label">Seconds per game</div></div><input id="speed" type="number" min="3" max="20" step="1" value="${Number(this._config.ticker_seconds_per_game) || 8}"><div class="helper">Higher values scroll more slowly.</div></div>
+            <div class="field"><div class="label-row"><div class="label">Maximum games per sport</div></div><input id="max-games" type="number" min="1" max="30" step="1" value="${Number(this._config.ticker_max_games_per_sport) || 20}"></div>
           </div></section>
         ` : `
           <section class="section"><div class="eyebrow">Game options</div><div class="options">
-            ${this._toggle("show-league", "Show league", this._config.show_league !== false)}
-            ${this._toggle("show-records", "Show team records", this._config.show_records !== false)}
-            ${this._toggle("show-venue", "Show venue", this._config.show_venue !== false)}
-            ${this._toggle("show-broadcast", "Show broadcast", this._config.show_broadcast !== false)}
-            ${this._toggle("show-logos", "Show team logos", this._config.show_logos !== false)}
+            ${this._toggle("show-league", "Show league", "mdi:earth", this._config.show_league !== false)}
+            ${this._toggle("show-records", "Show team records", "mdi:trophy-outline", this._config.show_records !== false)}
+            ${this._toggle("show-venue", "Show venue", "mdi:stadium-outline", this._config.show_venue !== false)}
+            ${this._toggle("show-broadcast", "Show broadcast", "mdi:television", this._config.show_broadcast !== false)}
+            ${this._toggle("show-logos", "Show team logos", "mdi:image-outline", this._config.show_logos !== false)}
           </div></section>
         `}
 
         <div class="advanced"><button id="advanced-button" class="advanced-button" type="button"><span>Advanced options</span><ha-icon icon="mdi:chevron-${this._advancedOpen ? "up" : "down"}"></ha-icon></button>
-          ${this._advancedOpen ? `<div class="advanced-body">${isTicker ? '<div class="helper">No advanced ticker options are required right now.</div>' : `<div class="field"><div class="label">Event ID</div><input id="event-id" type="text" value="${this._escapeAttr(this._config.event_id || "")}" placeholder="Optional ESPN event ID"><div class="helper">Pin this card to one ESPN event instead of automatic game selection.</div></div><div class="field"><div class="label">Entity override</div><input id="entity-override" type="text" value="${this._escapeAttr(this._config.entity || "")}" placeholder="sensor.espn_..."><div class="helper">Normally managed automatically. Change only for advanced/custom configurations.</div></div>`}</div>` : ""}
+          ${this._advancedOpen ? `<div class="advanced-body">${isTicker ? '<div class="helper">No advanced ticker options are required right now.</div>' : `<div class="field"><div class="label-row"><div class="label">Event ID</div></div><input id="event-id" type="text" value="${this._escapeAttr(this._config.event_id || "")}" placeholder="Optional ESPN event ID"><div class="helper">Pin this card to one ESPN event instead of automatic game selection.</div></div><div class="field"><div class="label-row"><div class="label">Entity override</div></div><input id="entity-override" type="text" value="${this._escapeAttr(this._config.entity || "")}" placeholder="sensor.espn_..."><div class="helper">Normally managed automatically. Change only for advanced/custom configurations.</div></div>`}</div>` : ""}
         </div>
       </div>`;
 
@@ -125,11 +128,17 @@ class SportsTickerCardEditor extends HTMLElement {
     const advanced = this.shadowRoot.getElementById("advanced-button");
     advanced?.addEventListener("click", () => { this._advancedOpen = !this._advancedOpen; this._render(); });
 
-    if (isTicker) this._wireTicker(selectedSports);
+    if (isTicker) this._wireTicker();
     else this._wireGame(sportKey, layout);
   }
 
-  _toggle(id, label, checked) { return `<label class="toggle"><span>${label}</span><input id="${id}" type="checkbox" ${checked ? "checked" : ""}></label>`; }
+  _selectField(label, id, options, helper = "") {
+    return `<div class="field"><div class="label-row"><div class="label">${label}</div><ha-icon icon="mdi:help-circle-outline"></ha-icon></div><div class="select-wrap"><select id="${id}">${options}</select><ha-icon icon="mdi:chevron-down"></ha-icon></div>${helper ? `<div class="helper">${helper}</div>` : ""}</div>`;
+  }
+
+  _toggle(id, label, icon, checked) {
+    return `<label class="toggle"><span class="toggle-text"><ha-icon icon="${icon}"></ha-icon><span>${label}</span></span><span class="switch"><input id="${id}" type="checkbox" ${checked ? "checked" : ""}><span class="slider"></span></span></label>`;
+  }
 
   _changeType(type, available) {
     if (type === "ticker") {
@@ -138,7 +147,7 @@ class SportsTickerCardEditor extends HTMLElement {
       this._emit({ ...this._config, preset: "ticker", sports: sports.length ? sports : enabled.slice(0, 1), show_logos: this._config.show_logos !== false, ticker_seconds_per_game: Number(this._config.ticker_seconds_per_game) || 8, ticker_max_games_per_sport: Number(this._config.ticker_max_games_per_sport) || 20, ticker_pause_on_hover: this._config.ticker_pause_on_hover !== false });
       return;
     }
-    const [key, sport] = available[0] || [];
+    const [, sport] = available[0] || [];
     if (!sport) return;
     this._emit({ ...this._config, preset: "game", entity: sport.entity, show_logos: true, show_league: true, show_records: true, show_venue: true, show_broadcast: true });
   }
@@ -157,10 +166,7 @@ class SportsTickerCardEditor extends HTMLElement {
     const sport = this.shadowRoot.getElementById("sport");
     if (sport) {
       sport.value = sportKey || "";
-      sport.addEventListener("change", () => {
-        const def = ST_SPORTS[sport.value]; if (!def) return;
-        this._emit({ ...this._config, entity: def.entity });
-      });
+      sport.addEventListener("change", () => { const def = ST_SPORTS[sport.value]; if (def) this._emit({ ...this._config, entity: def.entity }); });
     }
     const layout = this.shadowRoot.getElementById("layout");
     if (layout) {

@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.1.0";
+const CARD_VERSION = "0.2.0";
 
 const htmlEscape = (value) => String(value ?? "")
   .replaceAll("&", "&amp;")
@@ -9,13 +9,112 @@ const htmlEscape = (value) => String(value ?? "")
 
 const asArray = (value) => Array.isArray(value) ? value : [];
 
+const PRESETS = {
+  game: {
+    label: "Game — Standard",
+    description: "Full matchup card with team logos, status, records and game details.",
+    defaults: {
+      show_league: true,
+      show_records: true,
+      show_venue: true,
+      show_broadcast: true,
+      show_logos: true,
+    },
+  },
+  game_compact: {
+    label: "Game — Compact",
+    description: "Smaller matchup card for denser dashboards and mobile layouts.",
+    defaults: {
+      show_league: false,
+      show_records: true,
+      show_venue: false,
+      show_broadcast: false,
+      show_logos: true,
+    },
+  },
+};
+
+const isSportsTickerScoreboardEntity = (hass, entityId) => {
+  const state = hass?.states?.[entityId];
+  return Boolean(
+    entityId?.startsWith("sensor.espn_") &&
+    Array.isArray(state?.attributes?.events)
+  );
+};
+
 class SportsTickerCard extends HTMLElement {
   static getStubConfig(hass) {
-    const entity = Object.keys(hass?.states ?? {}).find((entityId) => {
-      const state = hass.states[entityId];
-      return entityId.startsWith("sensor.espn_") && Array.isArray(state?.attributes?.events);
-    });
-    return entity ? { entity } : {};
+    const entity = Object.keys(hass?.states ?? {}).find((entityId) =>
+      isSportsTickerScoreboardEntity(hass, entityId)
+    );
+    return entity ? { entity, preset: "game" } : { preset: "game" };
+  }
+
+  static getConfigForm() {
+    const presetOptions = Object.entries(PRESETS).map(([value, preset]) => ({
+      value,
+      label: preset.label,
+    }));
+
+    return {
+      schema: [
+        {
+          name: "preset",
+          required: true,
+          selector: { select: { mode: "dropdown", options: presetOptions } },
+        },
+        {
+          name: "entity",
+          required: true,
+          selector: { entity: { domain: "sensor" } },
+        },
+        {
+          type: "expandable",
+          name: "display",
+          title: "Display options",
+          flatten: true,
+          schema: [
+            { name: "show_league", selector: { boolean: {} } },
+            { name: "show_logos", selector: { boolean: {} } },
+            { name: "show_records", selector: { boolean: {} } },
+            { name: "show_venue", selector: { boolean: {} } },
+            { name: "show_broadcast", selector: { boolean: {} } },
+          ],
+        },
+        {
+          type: "expandable",
+          name: "advanced",
+          title: "Advanced",
+          flatten: true,
+          schema: [
+            {
+              name: "event_id",
+              selector: { text: {} },
+            },
+          ],
+        },
+      ],
+      computeLabel: (schema) => ({
+        preset: "Card style",
+        entity: "Sports Ticker entity",
+        show_league: "Show league",
+        show_logos: "Show team logos",
+        show_records: "Show team records",
+        show_venue: "Show venue",
+        show_broadcast: "Show broadcast",
+        event_id: "Event ID",
+      }[schema.name]),
+      computeHelper: (schema) => ({
+        preset: "Choose a pre-made Sports Ticker layout. More card families will appear here as they are added.",
+        entity: "Choose a Sports Ticker raw scoreboard sensor containing ESPN events.",
+        event_id: "Optional. Pin this card to a specific ESPN event instead of automatically choosing the favorite, live, or next game.",
+      }[schema.name]),
+      assertConfig: (config) => {
+        if (config.preset && !PRESETS[config.preset]) {
+          throw new Error(`Unknown Sports Ticker preset: ${config.preset}`);
+        }
+      },
+    };
   }
 
   constructor() {
@@ -27,13 +126,14 @@ class SportsTickerCard extends HTMLElement {
 
   setConfig(config) {
     if (!config || !config.entity) {
-      throw new Error("Sports Ticker Game Card requires an entity");
+      throw new Error("Sports Ticker card requires an entity");
     }
+
+    const presetName = PRESETS[config.preset] ? config.preset : "game";
+    const preset = PRESETS[presetName];
     this._config = {
-      show_league: true,
-      show_records: true,
-      show_venue: true,
-      show_broadcast: true,
+      preset: presetName,
+      ...preset.defaults,
       ...config,
     };
     this._render();
@@ -45,10 +145,13 @@ class SportsTickerCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 4;
+    return this._config?.preset === "game_compact" ? 3 : 4;
   }
 
   getGridOptions() {
+    if (this._config?.preset === "game_compact") {
+      return { columns: 12, rows: 3, min_columns: 6, min_rows: 2 };
+    }
     return { columns: 12, rows: 4, min_columns: 6, min_rows: 3 };
   }
 
@@ -78,10 +181,11 @@ class SportsTickerCard extends HTMLElement {
     const league = attrs.league_name || attrs.league || "Sports Ticker";
     const stale = Boolean(attrs.stale);
     const stateClass = game.completed ? "final" : game.live ? "live" : "scheduled";
+    const compact = this._config.preset === "game_compact";
 
     this.shadowRoot.innerHTML = `${this._styles()}
       <ha-card>
-        <div class="card ${stateClass}">
+        <div class="card ${stateClass} ${compact ? "compact" : "standard"}">
           <div class="header">
             <div class="header-left">
               ${this._config.show_league ? `<span class="league">${htmlEscape(String(league).toUpperCase())}</span>` : ""}
@@ -168,7 +272,6 @@ class SportsTickerCard extends HTMLElement {
     const broadcasts = asArray(competition.broadcasts)
       .flatMap((broadcast) => asArray(broadcast?.names))
       .filter(Boolean);
-
     const venue = competition?.venue?.fullName || competition?.venue?.address?.city || "";
 
     return {
@@ -217,10 +320,14 @@ class SportsTickerCard extends HTMLElement {
   }
 
   _team(team, showScoreState) {
+    const logo = this._config.show_logos
+      ? `<div class="logo-wrap">${team.logo
+          ? `<img class="logo" src="${htmlEscape(team.logo)}" alt="${htmlEscape(team.name)} logo" loading="lazy">`
+          : `<div class="logo fallback">${htmlEscape(team.abbreviation.slice(0, 3))}</div>`}</div>`
+      : "";
+
     return `<div class="team ${showScoreState && team.winner ? "winner" : ""}">
-      <div class="logo-wrap">
-        ${team.logo ? `<img class="logo" src="${htmlEscape(team.logo)}" alt="${htmlEscape(team.name)} logo" loading="lazy">` : `<div class="logo fallback">${htmlEscape(team.abbreviation.slice(0, 3))}</div>`}
-      </div>
+      ${logo}
       <div class="team-name" title="${htmlEscape(team.name)}">${htmlEscape(team.name)}</div>
     </div>`;
   }
@@ -231,13 +338,8 @@ class SportsTickerCard extends HTMLElement {
 
   _styles() {
     return `<style>
-      :host {
-        display: block;
-        --st-gap: 16px;
-      }
-      ha-card {
-        overflow: hidden;
-      }
+      :host { display: block; --st-gap: 16px; }
+      ha-card { overflow: hidden; }
       .card {
         padding: 16px 18px;
         color: var(--primary-text-color);
@@ -249,15 +351,8 @@ class SportsTickerCard extends HTMLElement {
         justify-content: space-between;
         gap: 12px;
       }
-      .header {
-        min-height: 24px;
-        margin-bottom: 12px;
-      }
-      .header-left, .status-wrap, .meta {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-      }
+      .header { min-height: 24px; margin-bottom: 12px; }
+      .header-left, .status-wrap, .meta { display: inline-flex; align-items: center; gap: 6px; }
       .league {
         font-size: 12px;
         font-weight: 700;
@@ -273,10 +368,7 @@ class SportsTickerCard extends HTMLElement {
         background: var(--secondary-background-color);
         color: var(--secondary-text-color);
       }
-      .status {
-        font-size: 12px;
-        font-weight: 650;
-      }
+      .status { font-size: 12px; font-weight: 650; }
       .live-dot {
         width: 7px;
         height: 7px;
@@ -290,23 +382,10 @@ class SportsTickerCard extends HTMLElement {
         align-items: center;
         gap: var(--st-gap);
       }
-      .team {
-        min-width: 0;
-        text-align: center;
-        opacity: .86;
-      }
+      .team { min-width: 0; text-align: center; opacity: .86; }
       .team.winner { opacity: 1; }
-      .logo-wrap {
-        display: grid;
-        place-items: center;
-        height: 72px;
-        margin-bottom: 7px;
-      }
-      .logo {
-        max-width: 68px;
-        max-height: 68px;
-        object-fit: contain;
-      }
+      .logo-wrap { display: grid; place-items: center; height: 72px; margin-bottom: 7px; }
+      .logo { max-width: 68px; max-height: 68px; object-fit: contain; }
       .logo.fallback {
         width: 58px;
         height: 58px;
@@ -325,10 +404,7 @@ class SportsTickerCard extends HTMLElement {
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .center {
-        min-width: 92px;
-        text-align: center;
-      }
+      .center { min-width: 92px; text-align: center; }
       .scoreline {
         display: flex;
         justify-content: center;
@@ -340,11 +416,7 @@ class SportsTickerCard extends HTMLElement {
         line-height: 1;
       }
       .score-separator { color: var(--disabled-text-color); font-weight: 400; }
-      .versus {
-        font-size: 20px;
-        font-weight: 700;
-        color: var(--secondary-text-color);
-      }
+      .versus { font-size: 20px; font-weight: 700; color: var(--secondary-text-color); }
       .detail {
         margin-top: 6px;
         max-width: 145px;
@@ -368,10 +440,20 @@ class SportsTickerCard extends HTMLElement {
         font-size: 11px;
       }
       .meta ha-icon { --mdc-icon-size: 15px; }
-      .message {
-        padding: 20px;
-        color: var(--secondary-text-color);
-      }
+      .message { padding: 20px; color: var(--secondary-text-color); }
+
+      .card.compact { padding: 12px 14px; }
+      .card.compact .header { margin-bottom: 7px; min-height: 20px; }
+      .card.compact .logo-wrap { height: 48px; margin-bottom: 3px; }
+      .card.compact .logo { max-width: 44px; max-height: 44px; }
+      .card.compact .logo.fallback { width: 42px; height: 42px; font-size: 11px; }
+      .card.compact .team-name { font-size: 12px; }
+      .card.compact .center { min-width: 72px; }
+      .card.compact .scoreline { font-size: clamp(22px, 5vw, 30px); gap: 5px; }
+      .card.compact .detail { margin-top: 3px; font-size: 10px; max-width: 110px; }
+      .card.compact .records { margin-top: 5px; font-size: 10px; }
+      .card.compact .footer { margin-top: 8px; padding-top: 7px; }
+
       @media (max-width: 420px) {
         :host { --st-gap: 8px; }
         .card { padding: 14px 12px; }
@@ -381,6 +463,10 @@ class SportsTickerCard extends HTMLElement {
         .center { min-width: 78px; }
         .detail { max-width: 105px; font-size: 10px; }
         .footer { gap: 8px; }
+        .card.compact { padding: 10px; }
+        .card.compact .logo-wrap { height: 42px; }
+        .card.compact .logo { max-width: 38px; max-height: 38px; }
+        .card.compact .center { min-width: 62px; }
       }
     </style>`;
   }
@@ -394,11 +480,25 @@ window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === "sports-ticker-card")) {
   window.customCards.push({
     type: "sports-ticker-card",
-    name: "Sports Ticker Game Card",
-    description: "Responsive matchup card powered by Sports Ticker scoreboard entities.",
+    name: "Sports Ticker",
+    description: "Sports Ticker dashboard cards with selectable pre-made layouts and per-card options.",
     preview: true,
     documentationURL: "https://github.com/LiquidFXX/sports-ticker",
+    getEntitySuggestion: (hass, entityId) => {
+      if (!isSportsTickerScoreboardEntity(hass, entityId)) return null;
+      return {
+        config: {
+          type: "custom:sports-ticker-card",
+          entity: entityId,
+          preset: "game",
+        },
+      };
+    },
   });
 }
 
-console.info(`%c SPORTS-TICKER-CARD %c v${CARD_VERSION} `, "background:#444;color:#fff;font-weight:700", "background:#eee;color:#444");
+console.info(
+  `%c SPORTS-TICKER-CARD %c v${CARD_VERSION} `,
+  "background:#444;color:#fff;font-weight:700",
+  "background:#eee;color:#444"
+);

@@ -18,7 +18,8 @@ LOGGER = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 FRONTEND_URL = "/sports-ticker/frontend"
 CARD_FILENAME = "sports-ticker-card.js"
-CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}"
+CARD_VERSION = "0.3.1"
+CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}?v={CARD_VERSION}"
 
 # ✅ hassfest: integration has async_setup, so define CONFIG_SCHEMA
 # This integration is config-entry only (no YAML configuration)

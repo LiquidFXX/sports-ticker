@@ -19,9 +19,11 @@ FRONTEND_DIR = Path(__file__).parent / "frontend"
 FRONTEND_URL = "/sports-ticker/frontend"
 CARD_FILENAME = "sports-ticker-card.js"
 EDITOR_FILENAME = "sports-ticker-card-editor.js"
-CARD_VERSION = "0.4.1"
+SPLIT_CARDS_FILENAME = "sports-ticker-split-cards.js"
+CARD_VERSION = "0.4.2"
 CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}?v={CARD_VERSION}"
 EDITOR_URL = f"{FRONTEND_URL}/{EDITOR_FILENAME}?v={CARD_VERSION}"
+SPLIT_CARDS_URL = f"{FRONTEND_URL}/{SPLIT_CARDS_FILENAME}?v={CARD_VERSION}"
 
 # hassfest: integration has async_setup, so define CONFIG_SCHEMA
 # This integration is config-entry only (no YAML configuration)
@@ -39,6 +41,7 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
     """Serve and load the bundled Sports Ticker dashboard cards."""
     card_path = FRONTEND_DIR / CARD_FILENAME
     editor_path = FRONTEND_DIR / EDITOR_FILENAME
+    split_cards_path = FRONTEND_DIR / SPLIT_CARDS_FILENAME
     if not card_path.exists():
         LOGGER.warning(
             "Bundled Sports Ticker card was not found at %s; dashboard card will not be available",
@@ -56,6 +59,14 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         LOGGER.warning(
             "Bundled Sports Ticker card editor was not found at %s; graphical configuration will not be available",
             editor_path,
+        )
+
+    if split_cards_path.exists():
+        add_extra_js_url(hass, SPLIT_CARDS_URL)
+    else:
+        LOGGER.warning(
+            "Bundled Sports Ticker split card registrations were not found at %s; sport-specific picker cards will not be available",
+            split_cards_path,
         )
 
 

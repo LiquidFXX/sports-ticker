@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.2.0";
+const CARD_VERSION = "0.3.0";
 
 const htmlEscape = (value) => String(value ?? "")
   .replaceAll("&", "&amp;")
@@ -11,35 +11,44 @@ const asArray = (value) => Array.isArray(value) ? value : [];
 
 const PRESETS = {
   game: {
+    family: "game",
     label: "Game — Standard",
-    description: "Full matchup card with team logos, status, records and game details.",
     defaults: {
       show_league: true,
+      show_logos: true,
       show_records: true,
       show_venue: true,
       show_broadcast: true,
-      show_logos: true,
     },
   },
   game_compact: {
+    family: "game",
     label: "Game — Compact",
-    description: "Smaller matchup card for denser dashboards and mobile layouts.",
     defaults: {
       show_league: false,
+      show_logos: true,
       show_records: true,
       show_venue: false,
       show_broadcast: false,
+    },
+  },
+  ticker: {
+    family: "ticker",
+    label: "Scoreboard — Ticker",
+    defaults: {
+      show_league: true,
       show_logos: true,
+      show_records: false,
+      ticker_speed: 30,
+      ticker_pause_on_hover: true,
+      ticker_max_games: 12,
     },
   },
 };
 
 const isSportsTickerScoreboardEntity = (hass, entityId) => {
   const state = hass?.states?.[entityId];
-  return Boolean(
-    entityId?.startsWith("sensor.espn_") &&
-    Array.isArray(state?.attributes?.events)
-  );
+  return Boolean(entityId?.startsWith("sensor.espn_") && Array.isArray(state?.attributes?.events));
 };
 
 class SportsTickerCard extends HTMLElement {
@@ -83,14 +92,28 @@ class SportsTickerCard extends HTMLElement {
         },
         {
           type: "expandable",
+          name: "ticker_options",
+          title: "Ticker options",
+          flatten: true,
+          schema: [
+            {
+              name: "ticker_speed",
+              selector: { number: { min: 10, max: 120, step: 5, mode: "slider", unit_of_measurement: "s" } },
+            },
+            {
+              name: "ticker_max_games",
+              selector: { number: { min: 1, max: 30, step: 1, mode: "box" } },
+            },
+            { name: "ticker_pause_on_hover", selector: { boolean: {} } },
+          ],
+        },
+        {
+          type: "expandable",
           name: "advanced",
           title: "Advanced",
           flatten: true,
           schema: [
-            {
-              name: "event_id",
-              selector: { text: {} },
-            },
+            { name: "event_id", selector: { text: {} } },
           ],
         },
       ],
@@ -102,12 +125,17 @@ class SportsTickerCard extends HTMLElement {
         show_records: "Show team records",
         show_venue: "Show venue",
         show_broadcast: "Show broadcast",
+        ticker_speed: "Ticker loop duration",
+        ticker_max_games: "Maximum games",
+        ticker_pause_on_hover: "Pause on hover",
         event_id: "Event ID",
       }[schema.name]),
       computeHelper: (schema) => ({
-        preset: "Choose a pre-made Sports Ticker layout. More card families will appear here as they are added.",
+        preset: "Choose a pre-made Sports Ticker layout.",
         entity: "Choose a Sports Ticker raw scoreboard sensor containing ESPN events.",
-        event_id: "Optional. Pin this card to a specific ESPN event instead of automatically choosing the favorite, live, or next game.",
+        ticker_speed: "Higher values move more slowly. Used only by the ticker preset.",
+        ticker_max_games: "Limits how many games appear in one ticker loop.",
+        event_id: "Optional. Pin game presets to a specific ESPN event.",
       }[schema.name]),
       assertConfig: (config) => {
         if (config.preset && !PRESETS[config.preset]) {
@@ -125,17 +153,9 @@ class SportsTickerCard extends HTMLElement {
   }
 
   setConfig(config) {
-    if (!config || !config.entity) {
-      throw new Error("Sports Ticker card requires an entity");
-    }
-
+    if (!config || !config.entity) throw new Error("Sports Ticker card requires an entity");
     const presetName = PRESETS[config.preset] ? config.preset : "game";
-    const preset = PRESETS[presetName];
-    this._config = {
-      preset: presetName,
-      ...preset.defaults,
-      ...config,
-    };
+    this._config = { preset: presetName, ...PRESETS[presetName].defaults, ...config };
     this._render();
   }
 
@@ -145,14 +165,18 @@ class SportsTickerCard extends HTMLElement {
   }
 
   getCardSize() {
+    if (this._family() === "ticker") return 2;
     return this._config?.preset === "game_compact" ? 3 : 4;
   }
 
   getGridOptions() {
-    if (this._config?.preset === "game_compact") {
-      return { columns: 12, rows: 3, min_columns: 6, min_rows: 2 };
-    }
+    if (this._family() === "ticker") return { columns: 12, rows: 2, min_columns: 6, min_rows: 2 };
+    if (this._config?.preset === "game_compact") return { columns: 12, rows: 3, min_columns: 6, min_rows: 2 };
     return { columns: 12, rows: 4, min_columns: 6, min_rows: 3 };
+  }
+
+  _family() {
+    return PRESETS[this._config?.preset]?.family || "game";
   }
 
   _render() {
@@ -171,6 +195,15 @@ class SportsTickerCard extends HTMLElement {
       return;
     }
 
+    if (this._family() === "ticker") {
+      this._renderTicker(attrs, events);
+      return;
+    }
+
+    this._renderGame(attrs, events);
+  }
+
+  _renderGame(attrs, events) {
     const event = this._selectEvent(events, attrs.favorite_team, this._config.event_id);
     const game = this._normalizeEvent(event);
     if (!game) {
@@ -180,40 +213,33 @@ class SportsTickerCard extends HTMLElement {
 
     const league = attrs.league_name || attrs.league || "Sports Ticker";
     const stale = Boolean(attrs.stale);
-    const stateClass = game.completed ? "final" : game.live ? "live" : "scheduled";
     const compact = this._config.preset === "game_compact";
+    const stateClass = game.completed ? "final" : game.live ? "live" : "scheduled";
 
     this.shadowRoot.innerHTML = `${this._styles()}
       <ha-card>
-        <div class="card ${stateClass} ${compact ? "compact" : "standard"}">
+        <div class="card game-card ${stateClass} ${compact ? "compact" : "standard"}">
           <div class="header">
             <div class="header-left">
               ${this._config.show_league ? `<span class="league">${htmlEscape(String(league).toUpperCase())}</span>` : ""}
-              ${stale ? '<span class="badge stale">CACHED</span>' : ""}
+              ${stale ? '<span class="badge">CACHED</span>' : ""}
             </div>
             <div class="status-wrap">
               ${game.live ? '<span class="live-dot" aria-hidden="true"></span>' : ""}
               <span class="status">${htmlEscape(game.status)}</span>
             </div>
           </div>
-
           <div class="matchup">
             ${this._team(game.away, game.completed || game.live)}
             <div class="center">
               ${game.live || game.completed
                 ? `<div class="scoreline"><span>${htmlEscape(game.away.score)}</span><span class="score-separator">–</span><span>${htmlEscape(game.home.score)}</span></div>`
-                : `<div class="versus">@</div>`}
+                : '<div class="versus">@</div>'}
               <div class="detail">${htmlEscape(game.detail)}</div>
             </div>
             ${this._team(game.home, game.completed || game.live)}
           </div>
-
-          ${this._config.show_records ? `
-            <div class="records">
-              <span>${htmlEscape(game.away.record || "")}</span>
-              <span>${htmlEscape(game.home.record || "")}</span>
-            </div>` : ""}
-
+          ${this._config.show_records ? `<div class="records"><span>${htmlEscape(game.away.record)}</span><span>${htmlEscape(game.home.record)}</span></div>` : ""}
           ${(this._config.show_venue && game.venue) || (this._config.show_broadcast && game.broadcast) ? `
             <div class="footer">
               ${this._config.show_venue && game.venue ? `<span class="meta"><ha-icon icon="mdi:map-marker-outline"></ha-icon>${htmlEscape(game.venue)}</span>` : ""}
@@ -223,31 +249,74 @@ class SportsTickerCard extends HTMLElement {
       </ha-card>`;
   }
 
+  _renderTicker(attrs, events) {
+    const maxGames = Math.max(1, Math.min(30, Number(this._config.ticker_max_games) || 12));
+    const games = events.slice(0, maxGames).map((event) => this._normalizeEvent(event)).filter(Boolean);
+    if (!games.length) {
+      this.shadowRoot.innerHTML = this._styles() + this._message("Ticker data is not available.");
+      return;
+    }
+
+    const league = attrs.league_name || attrs.league || "Sports Ticker";
+    const speed = Math.max(10, Math.min(120, Number(this._config.ticker_speed) || Number(attrs.ticker_speed) || 30));
+    const pauseClass = this._config.ticker_pause_on_hover ? "pause-on-hover" : "";
+    const items = games.map((game) => this._tickerGame(game)).join("");
+
+    this.shadowRoot.innerHTML = `${this._styles()}
+      <ha-card>
+        <div class="ticker-card">
+          ${this._config.show_league ? `<div class="ticker-league">${htmlEscape(String(league).toUpperCase())}</div>` : ""}
+          <div class="ticker-viewport ${pauseClass}" style="--ticker-duration:${speed}s">
+            <div class="ticker-track">
+              <div class="ticker-sequence">${items}</div>
+              <div class="ticker-sequence" aria-hidden="true">${items}</div>
+            </div>
+          </div>
+        </div>
+      </ha-card>`;
+  }
+
+  _tickerGame(game) {
+    const live = game.live ? '<span class="live-dot" aria-hidden="true"></span>' : "";
+    const score = game.live || game.completed
+      ? `<span class="ticker-score">${htmlEscape(game.away.score)}–${htmlEscape(game.home.score)}</span>`
+      : '<span class="ticker-at">@</span>';
+    const records = this._config.show_records
+      ? `<span class="ticker-record">${htmlEscape(game.away.record || "")} · ${htmlEscape(game.home.record || "")}</span>`
+      : "";
+
+    return `<div class="ticker-game">
+      <span class="ticker-status">${live}${htmlEscape(game.status)}</span>
+      <span class="ticker-team">${this._tickerLogo(game.away)}<strong>${htmlEscape(game.away.abbreviation || game.away.name)}</strong></span>
+      ${score}
+      <span class="ticker-team">${this._tickerLogo(game.home)}<strong>${htmlEscape(game.home.abbreviation || game.home.name)}</strong></span>
+      ${records}
+    </div>`;
+  }
+
+  _tickerLogo(team) {
+    if (!this._config.show_logos || !team.logo) return "";
+    return `<img class="ticker-logo" src="${htmlEscape(team.logo)}" alt="" loading="lazy">`;
+  }
+
   _selectEvent(events, favoriteTeam, eventId) {
     if (eventId) {
       const configured = events.find((event) => String(event?.id) === String(eventId));
       if (configured) return configured;
     }
-
     if (favoriteTeam) {
       const favorite = String(favoriteTeam).toUpperCase();
-      const match = events.find((event) => {
-        const competitors = asArray(event?.competitions?.[0]?.competitors);
-        return competitors.some((competitor) => {
-          const team = competitor?.team ?? {};
-          return [team.abbreviation, team.shortDisplayName, team.displayName]
-            .filter(Boolean)
-            .some((value) => String(value).toUpperCase() === favorite);
-        });
-      });
+      const match = events.find((event) => asArray(event?.competitions?.[0]?.competitors).some((competitor) => {
+        const team = competitor?.team ?? {};
+        return [team.abbreviation, team.shortDisplayName, team.displayName]
+          .filter(Boolean)
+          .some((value) => String(value).toUpperCase() === favorite);
+      }));
       if (match) return match;
     }
-
-    const live = events.find((event) => this._statusType(event)?.state === "in");
-    if (live) return live;
-
-    const upcoming = events.find((event) => this._statusType(event)?.state === "pre");
-    return upcoming || events[0];
+    return events.find((event) => this._statusType(event)?.state === "in")
+      || events.find((event) => this._statusType(event)?.state === "pre")
+      || events[0];
   }
 
   _statusType(event) {
@@ -262,16 +331,12 @@ class SportsTickerCard extends HTMLElement {
     if (!home || !away) return null;
 
     const statusType = this._statusType(event);
-    const state = statusType?.state;
-    const live = state === "in";
-    const completed = state === "post" || Boolean(statusType?.completed);
+    const live = statusType?.state === "in";
+    const completed = statusType?.state === "post" || Boolean(statusType?.completed);
     const status = statusType?.shortDetail || statusType?.detail || statusType?.description || (completed ? "Final" : live ? "Live" : "Scheduled");
     const date = competition.date || event?.date;
     const detail = live || completed ? status : this._formatDate(date);
-
-    const broadcasts = asArray(competition.broadcasts)
-      .flatMap((broadcast) => asArray(broadcast?.names))
-      .filter(Boolean);
+    const broadcasts = asArray(competition.broadcasts).flatMap((broadcast) => asArray(broadcast?.names)).filter(Boolean);
     const venue = competition?.venue?.fullName || competition?.venue?.address?.city || "";
 
     return {
@@ -322,14 +387,10 @@ class SportsTickerCard extends HTMLElement {
   _team(team, showScoreState) {
     const logo = this._config.show_logos
       ? `<div class="logo-wrap">${team.logo
-          ? `<img class="logo" src="${htmlEscape(team.logo)}" alt="${htmlEscape(team.name)} logo" loading="lazy">`
-          : `<div class="logo fallback">${htmlEscape(team.abbreviation.slice(0, 3))}</div>`}</div>`
+        ? `<img class="logo" src="${htmlEscape(team.logo)}" alt="${htmlEscape(team.name)} logo" loading="lazy">`
+        : `<div class="logo fallback">${htmlEscape(team.abbreviation.slice(0, 3))}</div>`}</div>`
       : "";
-
-    return `<div class="team ${showScoreState && team.winner ? "winner" : ""}">
-      ${logo}
-      <div class="team-name" title="${htmlEscape(team.name)}">${htmlEscape(team.name)}</div>
-    </div>`;
+    return `<div class="team ${showScoreState && team.winner ? "winner" : ""}">${logo}<div class="team-name" title="${htmlEscape(team.name)}">${htmlEscape(team.name)}</div></div>`;
   }
 
   _message(message) {
@@ -338,143 +399,79 @@ class SportsTickerCard extends HTMLElement {
 
   _styles() {
     return `<style>
-      :host { display: block; --st-gap: 16px; }
-      ha-card { overflow: hidden; }
-      .card {
-        padding: 16px 18px;
-        color: var(--primary-text-color);
-        background: var(--ha-card-background, var(--card-background-color));
-      }
-      .header, .footer, .records {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-      }
-      .header { min-height: 24px; margin-bottom: 12px; }
-      .header-left, .status-wrap, .meta { display: inline-flex; align-items: center; gap: 6px; }
-      .league {
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: .08em;
-        color: var(--secondary-text-color);
-      }
-      .badge {
-        padding: 2px 6px;
-        border-radius: 999px;
-        font-size: 9px;
-        font-weight: 700;
-        letter-spacing: .06em;
-        background: var(--secondary-background-color);
-        color: var(--secondary-text-color);
-      }
-      .status { font-size: 12px; font-weight: 650; }
-      .live-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: var(--error-color);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--error-color) 18%, transparent);
-      }
-      .matchup {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-        align-items: center;
-        gap: var(--st-gap);
-      }
-      .team { min-width: 0; text-align: center; opacity: .86; }
-      .team.winner { opacity: 1; }
-      .logo-wrap { display: grid; place-items: center; height: 72px; margin-bottom: 7px; }
-      .logo { max-width: 68px; max-height: 68px; object-fit: contain; }
-      .logo.fallback {
-        width: 58px;
-        height: 58px;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        background: var(--secondary-background-color);
-        color: var(--secondary-text-color);
-        font-weight: 700;
-      }
-      .team-name {
-        font-size: 14px;
-        font-weight: 650;
-        line-height: 1.25;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .center { min-width: 92px; text-align: center; }
-      .scoreline {
-        display: flex;
-        justify-content: center;
-        align-items: baseline;
-        gap: 8px;
-        font-size: clamp(24px, 6vw, 38px);
-        font-weight: 750;
-        font-variant-numeric: tabular-nums;
-        line-height: 1;
-      }
-      .score-separator { color: var(--disabled-text-color); font-weight: 400; }
-      .versus { font-size: 20px; font-weight: 700; color: var(--secondary-text-color); }
-      .detail {
-        margin-top: 6px;
-        max-width: 145px;
-        font-size: 11px;
-        line-height: 1.3;
-        color: var(--secondary-text-color);
-      }
-      .records {
-        margin-top: 8px;
-        padding: 0 max(8px, 7%);
-        font-size: 11px;
-        color: var(--secondary-text-color);
-      }
-      .footer {
-        margin-top: 14px;
-        padding-top: 11px;
-        border-top: 1px solid var(--divider-color);
-        flex-wrap: wrap;
-        justify-content: center;
-        color: var(--secondary-text-color);
-        font-size: 11px;
-      }
-      .meta ha-icon { --mdc-icon-size: 15px; }
-      .message { padding: 20px; color: var(--secondary-text-color); }
-
-      .card.compact { padding: 12px 14px; }
-      .card.compact .header { margin-bottom: 7px; min-height: 20px; }
-      .card.compact .logo-wrap { height: 48px; margin-bottom: 3px; }
-      .card.compact .logo { max-width: 44px; max-height: 44px; }
-      .card.compact .logo.fallback { width: 42px; height: 42px; font-size: 11px; }
-      .card.compact .team-name { font-size: 12px; }
-      .card.compact .center { min-width: 72px; }
-      .card.compact .scoreline { font-size: clamp(22px, 5vw, 30px); gap: 5px; }
-      .card.compact .detail { margin-top: 3px; font-size: 10px; max-width: 110px; }
-      .card.compact .records { margin-top: 5px; font-size: 10px; }
-      .card.compact .footer { margin-top: 8px; padding-top: 7px; }
-
-      @media (max-width: 420px) {
-        :host { --st-gap: 8px; }
-        .card { padding: 14px 12px; }
-        .logo-wrap { height: 58px; }
-        .logo { max-width: 54px; max-height: 54px; }
-        .team-name { font-size: 12px; }
-        .center { min-width: 78px; }
-        .detail { max-width: 105px; font-size: 10px; }
-        .footer { gap: 8px; }
-        .card.compact { padding: 10px; }
-        .card.compact .logo-wrap { height: 42px; }
-        .card.compact .logo { max-width: 38px; max-height: 38px; }
-        .card.compact .center { min-width: 62px; }
+      :host { display:block; --st-gap:16px; }
+      ha-card { overflow:hidden; }
+      .card,.ticker-card { color:var(--primary-text-color); background:var(--ha-card-background,var(--card-background-color)); }
+      .card { padding:16px 18px; }
+      .header,.footer,.records { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      .header { min-height:24px; margin-bottom:12px; }
+      .header-left,.status-wrap,.meta { display:inline-flex; align-items:center; gap:6px; }
+      .league,.ticker-league { font-size:12px; font-weight:700; letter-spacing:.08em; color:var(--secondary-text-color); }
+      .badge { padding:2px 6px; border-radius:999px; font-size:9px; font-weight:700; background:var(--secondary-background-color); color:var(--secondary-text-color); }
+      .status { font-size:12px; font-weight:650; }
+      .live-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--error-color); box-shadow:0 0 0 3px color-mix(in srgb,var(--error-color) 18%,transparent); }
+      .matchup { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:var(--st-gap); }
+      .team { min-width:0; text-align:center; opacity:.86; }
+      .team.winner { opacity:1; }
+      .logo-wrap { display:grid; place-items:center; height:72px; margin-bottom:7px; }
+      .logo { max-width:68px; max-height:68px; object-fit:contain; }
+      .logo.fallback { width:58px; height:58px; border-radius:50%; display:grid; place-items:center; background:var(--secondary-background-color); color:var(--secondary-text-color); font-weight:700; }
+      .team-name { font-size:14px; font-weight:650; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .center { min-width:92px; text-align:center; }
+      .scoreline { display:flex; justify-content:center; align-items:baseline; gap:8px; font-size:clamp(24px,6vw,38px); font-weight:750; font-variant-numeric:tabular-nums; line-height:1; }
+      .score-separator { color:var(--disabled-text-color); font-weight:400; }
+      .versus { font-size:20px; font-weight:700; color:var(--secondary-text-color); }
+      .detail { margin-top:6px; max-width:145px; font-size:11px; line-height:1.3; color:var(--secondary-text-color); }
+      .records { margin-top:8px; padding:0 max(8px,7%); font-size:11px; color:var(--secondary-text-color); }
+      .footer { margin-top:14px; padding-top:11px; border-top:1px solid var(--divider-color); flex-wrap:wrap; justify-content:center; color:var(--secondary-text-color); font-size:11px; }
+      .meta ha-icon { --mdc-icon-size:15px; }
+      .message { padding:20px; color:var(--secondary-text-color); }
+      .card.compact { padding:12px 14px; }
+      .card.compact .header { margin-bottom:7px; min-height:20px; }
+      .card.compact .logo-wrap { height:48px; margin-bottom:3px; }
+      .card.compact .logo { max-width:44px; max-height:44px; }
+      .card.compact .logo.fallback { width:42px; height:42px; font-size:11px; }
+      .card.compact .team-name { font-size:12px; }
+      .card.compact .center { min-width:72px; }
+      .card.compact .scoreline { font-size:clamp(22px,5vw,30px); gap:5px; }
+      .card.compact .detail { margin-top:3px; font-size:10px; max-width:110px; }
+      .card.compact .records { margin-top:5px; font-size:10px; }
+      .card.compact .footer { margin-top:8px; padding-top:7px; }
+      .ticker-card { padding:0; }
+      .ticker-league { padding:9px 14px 7px; border-bottom:1px solid var(--divider-color); }
+      .ticker-viewport { overflow:hidden; width:100%; }
+      .ticker-track { display:flex; width:max-content; animation:sports-ticker-scroll var(--ticker-duration,30s) linear infinite; will-change:transform; }
+      .ticker-sequence { display:flex; flex:none; align-items:stretch; }
+      .ticker-game { display:grid; grid-template-columns:auto auto auto auto; grid-template-areas:'status status status status' 'away score home record'; align-items:center; gap:4px 9px; min-width:245px; padding:10px 16px; border-right:1px solid var(--divider-color); white-space:nowrap; }
+      .ticker-status { grid-area:status; display:inline-flex; align-items:center; gap:6px; font-size:10px; font-weight:650; color:var(--secondary-text-color); }
+      .ticker-team { display:inline-flex; align-items:center; gap:5px; min-width:0; font-size:12px; }
+      .ticker-score { grid-area:score; font-size:14px; font-weight:750; font-variant-numeric:tabular-nums; }
+      .ticker-at { grid-area:score; font-size:11px; color:var(--secondary-text-color); }
+      .ticker-record { grid-area:record; font-size:10px; color:var(--secondary-text-color); }
+      .ticker-logo { width:22px; height:22px; object-fit:contain; }
+      .pause-on-hover:hover .ticker-track { animation-play-state:paused; }
+      @keyframes sports-ticker-scroll { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+      @media (prefers-reduced-motion:reduce) { .ticker-track { animation:none; } .ticker-viewport { overflow-x:auto; } .ticker-sequence[aria-hidden="true"] { display:none; } }
+      @media (max-width:420px) {
+        :host { --st-gap:8px; }
+        .card { padding:14px 12px; }
+        .logo-wrap { height:58px; }
+        .logo { max-width:54px; max-height:54px; }
+        .team-name { font-size:12px; }
+        .center { min-width:78px; }
+        .detail { max-width:105px; font-size:10px; }
+        .footer { gap:8px; }
+        .card.compact { padding:10px; }
+        .card.compact .logo-wrap { height:42px; }
+        .card.compact .logo { max-width:38px; max-height:38px; }
+        .card.compact .center { min-width:62px; }
+        .ticker-game { min-width:215px; padding:9px 12px; gap:3px 7px; }
       }
     </style>`;
   }
 }
 
-if (!customElements.get("sports-ticker-card")) {
-  customElements.define("sports-ticker-card", SportsTickerCard);
-}
+if (!customElements.get("sports-ticker-card")) customElements.define("sports-ticker-card", SportsTickerCard);
 
 window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === "sports-ticker-card")) {
@@ -486,19 +483,9 @@ if (!window.customCards.some((card) => card.type === "sports-ticker-card")) {
     documentationURL: "https://github.com/LiquidFXX/sports-ticker",
     getEntitySuggestion: (hass, entityId) => {
       if (!isSportsTickerScoreboardEntity(hass, entityId)) return null;
-      return {
-        config: {
-          type: "custom:sports-ticker-card",
-          entity: entityId,
-          preset: "game",
-        },
-      };
+      return { config: { type: "custom:sports-ticker-card", entity: entityId, preset: "game" } };
     },
   });
 }
 
-console.info(
-  `%c SPORTS-TICKER-CARD %c v${CARD_VERSION} `,
-  "background:#444;color:#fff;font-weight:700",
-  "background:#eee;color:#444"
-);
+console.info(`%c SPORTS-TICKER-CARD %c v${CARD_VERSION} `, "background:#444;color:#fff;font-weight:700", "background:#eee;color:#444");

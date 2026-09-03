@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.4.0";
+const CARD_VERSION = "0.5.3";
 
 const htmlEscape = (value) => String(value ?? "")
   .replaceAll("&", "&amp;")
@@ -60,73 +60,9 @@ class SportsTickerCard extends HTMLElement {
     return entity ? { entity, preset: "game" } : { preset: "game" };
   }
 
-  static getConfigForm() {
-    const presetOptions = Object.entries(PRESETS).map(([value, preset]) => ({ value, label: preset.label }));
-    const sportOptions = Object.entries(SPORT_DEFS).map(([value, sport]) => ({ value, label: sport.label }));
-
-    return {
-      schema: [
-        { name: "preset", required: true, selector: { select: { mode: "dropdown", options: presetOptions } } },
-        { name: "entity", selector: { entity: { domain: "sensor" } } },
-        {
-          type: "expandable",
-          name: "ticker_options",
-          title: "Ticker options",
-          flatten: true,
-          schema: [
-            { name: "sports", selector: { select: { multiple: true, mode: "dropdown", options: sportOptions } } },
-            { name: "show_logos", selector: { boolean: {} } },
-            { name: "ticker_seconds_per_game", selector: { number: { min: 3, max: 20, step: 1, mode: "slider", unit_of_measurement: "s/game" } } },
-            { name: "ticker_max_games_per_sport", selector: { number: { min: 1, max: 30, step: 1, mode: "box" } } },
-            { name: "ticker_pause_on_hover", selector: { boolean: {} } },
-          ],
-        },
-        {
-          type: "expandable",
-          name: "game_display",
-          title: "Game card options",
-          flatten: true,
-          schema: [
-            { name: "show_league", selector: { boolean: {} } },
-            { name: "show_records", selector: { boolean: {} } },
-            { name: "show_venue", selector: { boolean: {} } },
-            { name: "show_broadcast", selector: { boolean: {} } },
-          ],
-        },
-        {
-          type: "expandable",
-          name: "advanced",
-          title: "Advanced",
-          flatten: true,
-          schema: [{ name: "event_id", selector: { text: {} } }],
-        },
-      ],
-      computeLabel: (schema) => ({
-        preset: "Card style",
-        entity: "Game card entity",
-        sports: "Sports shown in ticker",
-        show_logos: "Show team logos",
-        ticker_seconds_per_game: "Scroll speed",
-        ticker_max_games_per_sport: "Maximum games per sport",
-        ticker_pause_on_hover: "Pause on hover",
-        show_league: "Show league",
-        show_records: "Show team records",
-        show_venue: "Show venue",
-        show_broadcast: "Show broadcast",
-        event_id: "Event ID",
-      }[schema.name]),
-      computeHelper: (schema) => ({
-        preset: "Choose one Sports Ticker layout.",
-        entity: "Used by Game presets. Ticker reads the selected sports automatically.",
-        sports: "Select every enabled Sports Ticker league you want included in this ticker.",
-        ticker_seconds_per_game: "Matches the existing ticker behavior: more seconds per game means slower scrolling.",
-        ticker_max_games_per_sport: "Caps each selected sport so one busy league cannot dominate the ticker.",
-        event_id: "Optional. Pin a Game preset to a specific ESPN event.",
-      }[schema.name]),
-      assertConfig: (config) => {
-        if (config.preset && !PRESETS[config.preset]) throw new Error(`Unknown Sports Ticker preset: ${config.preset}`);
-      },
-    };
+  static async getConfigElement() {
+    await customElements.whenDefined("sports-ticker-card-editor");
+    return document.createElement("sports-ticker-card-editor");
   }
 
   constructor() {

@@ -10,7 +10,7 @@
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Custom%20Integration-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
 [![License](https://img.shields.io/github/license/LiquidFXX/sports-ticker)](LICENSE)
 
-**Stable release:** `v0.20.1`  •  **Current prerelease:** `v0.20.3-alpha.5`
+**Stable release:** `v0.20.3`
 
 </div>
 
@@ -61,7 +61,7 @@ Sports Ticker remains a reusable sports-data layer. Built-in cards are additive;
 
 ## Built-in Sports Ticker cards
 
-Starting with `v0.20.3-alpha.5`, Sports Ticker bundles its own Home Assistant dashboard card frontend. The integration serves and loads the card automatically, so users do not need to manually add a Lovelace JavaScript resource.
+Starting with `v0.20.3`, Sports Ticker bundles its own Home Assistant dashboard card frontend. The integration serves and loads the card automatically, so users do not need to manually add a Lovelace JavaScript resource.
 
 Add **Sports Ticker** from the Home Assistant card picker, then choose a pre-made layout in the graphical editor.
 
@@ -231,9 +231,9 @@ Fresh data reports `stale: false`; cached fallback data reports `stale: true` wi
 
 ## Current development
 
-The stable release is **v0.20.1**. The current prerelease is **v0.20.3-alpha.5**.
+The current stable release is **v0.20.3**.
 
-This prerelease line includes normalized NFL standings/playoff-picture data, College Football rankings work, and the first bundled Sports Ticker dashboard-card framework. The card framework is intentionally additive and keeps existing sensors and YAML dashboards backward-compatible.
+This release includes normalized NFL standings/playoff-picture data, College Football rankings work, and the bundled Sports Ticker dashboard-card framework. The card framework is additive and keeps existing sensors and YAML dashboards backward-compatible.
 
 ### Planned soccer expansion
 
@@ -251,7 +251,7 @@ Confirm that its league is enabled under **Sports Ticker → Configure**, then r
 
 ### A built-in card is missing
 
-Confirm Sports Ticker is updated to a prerelease that contains built-in cards, restart Home Assistant, and hard-refresh/reload the browser frontend after the integration update.
+Confirm Sports Ticker is updated to `v0.20.3` or newer, restart Home Assistant, and hard-refresh/reload the browser frontend after the integration update.
 
 ### A card is blank
 

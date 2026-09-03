@@ -1,4 +1,4 @@
-const SPORTS_TICKER_EDITOR_VERSION = "0.3.0";
+const SPORTS_TICKER_EDITOR_VERSION = "0.3.1";
 
 const ST_SPORTS = {
   nfl: { label: "NFL", entity: "sensor.espn_nfl_scoreboard_raw" },
@@ -188,5 +188,8 @@ class SportsTickerCardEditor extends HTMLElement {
 
 if (!customElements.get("sports-ticker-card-editor")) customElements.define("sports-ticker-card-editor", SportsTickerCardEditor);
 const SportsTickerCardClass = customElements.get("sports-ticker-card");
-if (SportsTickerCardClass) SportsTickerCardClass.getConfigElement = async () => document.createElement("sports-ticker-card-editor");
+if (SportsTickerCardClass) {
+  delete SportsTickerCardClass.getConfigForm;
+  SportsTickerCardClass.getConfigElement = async () => document.createElement("sports-ticker-card-editor");
+}
 console.info(`%c SPORTS-TICKER-EDITOR %c v${SPORTS_TICKER_EDITOR_VERSION} `, "background:#444;color:#fff;font-weight:700", "background:#eee;color:#444");

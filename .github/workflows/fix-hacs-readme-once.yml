@@ -1,0 +1,80 @@
+name: Fix HACS README Rendering Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/fix-hacs-readme-once.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fix README links for HACS renderer
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("README.md")
+          text = path.read_text()
+
+          replacements = {
+              '[![License](https://img.shields.io/github/license/LiquidFXX/sports-ticker)](LICENSE)':
+                  '[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/LiquidFXX/sports-ticker/blob/main/LICENSE)',
+              'href="examples/NFL.md#2-scrolling-sports-ticker"':
+                  'href="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/NFL.md#2-scrolling-sports-ticker"',
+              'src="examples/images/NFL/nfl_multi_sport_ticker.gif"':
+                  'src="https://raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/NFL/nfl_multi_sport_ticker.gif"',
+              'href="examples/NFL.md#1-favorite-team-next-game"':
+                  'href="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/NFL.md#1-favorite-team-next-game"',
+              'src="examples/images/NFL/nfl_next_game_card.svg"':
+                  'src="https://raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/NFL/nfl_next_game_card.svg"',
+              'href="examples/NFL.md"':
+                  'href="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/NFL.md"',
+              'src="examples/images/NFL/nfl_this_week_card.svg"':
+                  'src="https://raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/NFL/nfl_this_week_card.svg"',
+              'href="examples/CFB.md"':
+                  'href="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/CFB.md"',
+              'src="examples/images/CFB/cfb_rankings_card.webp"':
+                  'src="https://raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/CFB/cfb_rankings_card.webp"',
+          }
+
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f"Expected README text not found: {old}")
+              text = text.replace(old, new)
+
+          path.write_text(text)
+          PY
+
+      - name: Verify fixed URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/NFL/nfl_multi_sport_ticker.gif' README.md
+          grep -q 'raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/NFL/nfl_next_game_card.svg' README.md
+          grep -q 'raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/NFL/nfl_this_week_card.svg' README.md
+          grep -q 'raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/CFB/cfb_rankings_card.webp' README.md
+          grep -q 'img.shields.io/badge/License-MIT-yellow.svg' README.md
+
+      - name: Commit fix and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/fix-hacs-readme-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md .github/workflows/fix-hacs-readme-once.yml
+          git commit -m "Fix README rendering in HACS"
+          git push

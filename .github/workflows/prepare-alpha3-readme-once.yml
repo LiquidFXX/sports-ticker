@@ -1,0 +1,46 @@
+name: Prepare Alpha 3 README Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/prepare-alpha3-readme-once.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update prerelease label
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('README.md')
+          text = path.read_text()
+          old = '**Stable release:** `v0.20.3`  •  **Current prerelease:** `v0.20.4-alpha.2`'
+          new = '**Stable release:** `v0.20.3`  •  **Current prerelease:** `v0.20.4-alpha.3`'
+          if old not in text:
+              raise SystemExit('Expected prerelease label not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Commit and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/prepare-alpha3-readme-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md .github/workflows/prepare-alpha3-readme-once.yml
+          git commit -m "Prepare README for v0.20.4-alpha.3"
+          git push

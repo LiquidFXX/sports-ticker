@@ -10,7 +10,7 @@
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Custom%20Integration-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/LiquidFXX/sports-ticker/blob/main/LICENSE)
 
-**Stable release:** `v0.20.3`  •  **Current prerelease:** `v0.20.4-alpha.2`
+**Stable release:** `v0.20.3`  •  **Current prerelease:** `v0.20.4-alpha.3`
 
 </div>
 

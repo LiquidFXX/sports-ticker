@@ -17,11 +17,11 @@ LOGGER = logging.getLogger(__name__)
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 FRONTEND_URL = "/sports-ticker/frontend"
-CARD_FILENAME = "sports-ticker-card-v2.js"
-EDITOR_FILENAME = "sports-ticker-card-editor-v4.js"
-HIGHLIGHTS_FILENAME = "sports-ticker-highlights-card.js"
-CARD_VERSION = "0.9.0"
-CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}"
+CARD_FILENAME = "sports-ticker-card-v3.js"
+EDITOR_FILENAME = "sports-ticker-card-editor-v5.js"
+HIGHLIGHTS_FILENAME = "sports-ticker-highlights-card-v2.js"
+CARD_VERSION = "1.0.0"
+CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}?v={CARD_VERSION}"
 EDITOR_URL = f"{FRONTEND_URL}/{EDITOR_FILENAME}?v={CARD_VERSION}"
 HIGHLIGHTS_URL = f"{FRONTEND_URL}/{HIGHLIGHTS_FILENAME}?v={CARD_VERSION}"
 

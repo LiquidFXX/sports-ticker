@@ -10,7 +10,7 @@
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Custom%20Integration-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
 [![License](https://img.shields.io/github/license/LiquidFXX/sports-ticker)](LICENSE)
 
-**Stable release:** `v0.20.3`
+**Stable release:** `v0.20.4`
 
 </div>
 
@@ -18,7 +18,7 @@
 
 ## See it in action
 
-Sports Ticker gives Home Assistant the sports data and now includes the beginning of a native dashboard-card system. The existing Lovelace examples remain available for users who want fully custom layouts.
+Sports Ticker gives Home Assistant the sports data and includes a native dashboard-card system. The existing Lovelace examples remain available for users who want fully custom layouts.
 
 <a href="examples/NFL.md#2-scrolling-sports-ticker">
   <img src="examples/images/NFL/nfl_multi_sport_ticker.gif" alt="Sports Ticker scrolling multi-sport Home Assistant card" width="100%">
@@ -52,7 +52,7 @@ Sports Ticker gives Home Assistant the sports data and now includes the beginnin
 | 🏆 **College Football rankings** | AP Top 25, Coaches Poll, CFP rankings, previous rank, trend, records, votes, points, logos, and dropped-out teams |
 | 🏈 **NFL standings & playoff picture** | Normalized AFC/NFC standings, divisions, playoff seeds, wild cards, cut-line helpers, clinch data, favorite-team highlighting, and flat team lists |
 | 📊 **Player / team leaders** | MLB player leader sensors plus NFL per-team game leaders for passing, rushing, receiving, sacks, and tackles |
-| 🎬 **Highlights** | ESPN highlight/video metadata that can power playable game recap cards |
+| 🎬 **Highlights data** | ESPN highlight/video metadata remains available for custom Lovelace cards and future built-in highlight work |
 | 💾 **Failure-resistant data** | Last-good caching keeps cards populated when ESPN temporarily times out or returns bad data |
 
 Sports Ticker remains a reusable sports-data layer. Built-in cards are additive; existing sensors, entity IDs, YAML examples, `custom:button-card`, `card-mod`, Mushroom, and custom dashboards remain supported.
@@ -61,17 +61,19 @@ Sports Ticker remains a reusable sports-data layer. Built-in cards are additive;
 
 ## Built-in Sports Ticker cards
 
-Starting with `v0.20.3`, Sports Ticker bundles its own Home Assistant dashboard card frontend. The integration serves and loads the card automatically, so users do not need to manually add a Lovelace JavaScript resource.
+`v0.20.4` uses the known-good built-in card implementation from the `v0.20.4-alpha.2` baseline. The integration serves and loads the card automatically, so users do not need to manually add a Lovelace JavaScript resource.
 
 Add **Sports Ticker** from the Home Assistant card picker, then choose a pre-made layout in the graphical editor.
 
-Current presets:
+Current built-in presets:
 
 - **Game — Standard** — full matchup presentation with logos, score/status, records, venue, and broadcast options.
 - **Game — Compact** — a denser matchup layout for smaller dashboard areas.
 - **Scoreboard — Ticker** — horizontally scrolling league scoreboard with configurable logos, records, game count, scroll duration, and pause-on-hover behavior.
 
-The built-in cards inherit Home Assistant theme variables instead of forcing their own dashboard color theme. More presets will be added to the same Sports Ticker card selector rather than registering a long list of separate card types.
+The experimental built-in **Game Highlights** card is not part of this stable baseline. Highlight/video data remains available to existing custom YAML examples while the built-in Highlights card is rebuilt and tested separately.
+
+The built-in cards inherit Home Assistant theme variables instead of forcing their own dashboard color theme.
 
 Basic YAML remains available when desired:
 
@@ -207,7 +209,7 @@ Choose the leagues you want, then configure favorite teams, poll interval, ticke
 
 ## Lovelace examples
 
-The `examples/` folder contains complete dashboard examples in addition to the new built-in card.
+The `examples/` folder contains complete dashboard examples in addition to the built-in card.
 
 | Sport | Examples |
 | :--- | :--- |
@@ -231,9 +233,11 @@ Fresh data reports `stale: false`; cached fallback data reports `stale: true` wi
 
 ## Current development
 
-The current stable release is **v0.20.3**.
+The current stable release is **v0.20.4**.
 
-This release includes normalized NFL standings/playoff-picture data, College Football rankings work, and the bundled Sports Ticker dashboard-card framework. The card framework is additive and keeps existing sensors and YAML dashboards backward-compatible.
+This stable release intentionally returns the built-in dashboard frontend to the known-good `v0.20.4-alpha.2` implementation after a frontend registration regression was found in later prerelease testing. Game and Multi-Sport Ticker remain the supported built-in card modes in this release.
+
+The built-in Game Highlights card will return only after it is rebuilt and tested independently from the stable frontend loader.
 
 ### Planned soccer expansion
 
@@ -251,7 +255,7 @@ Confirm that its league is enabled under **Sports Ticker → Configure**, then r
 
 ### A built-in card is missing
 
-Confirm Sports Ticker is updated to `v0.20.3` or newer, restart Home Assistant, and hard-refresh/reload the browser frontend after the integration update.
+Confirm Sports Ticker is updated to `v0.20.4` or newer, restart Home Assistant, and hard-refresh/reload the browser frontend after the integration update.
 
 ### A card is blank
 

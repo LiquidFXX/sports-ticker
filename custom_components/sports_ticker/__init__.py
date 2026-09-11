@@ -23,7 +23,9 @@ HIGHLIGHTS_FILENAME = "sports-ticker-highlights-card.js"
 CARD_VERSION = "0.9.0"
 CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}"
 EDITOR_URL = f"{FRONTEND_URL}/{EDITOR_FILENAME}?v={CARD_VERSION}"
-HIGHLIGHTS_URL = f"{FRONTEND_URL}/{HIGHLIGHTS_FILENAME}?v={CARD_VERSION}"
+# Keep Highlights on a plain static URL while diagnosing the alpha.2 loader issue.
+# The working main card uses this same URL shape.
+HIGHLIGHTS_URL = f"{FRONTEND_URL}/{HIGHLIGHTS_FILENAME}"
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -53,6 +55,7 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
 
     if highlights_path.exists():
         add_extra_js_url(hass, HIGHLIGHTS_URL)
+        LOGGER.debug("Registered Sports Ticker highlights frontend resource: %s", HIGHLIGHTS_URL)
     else:
         LOGGER.warning("Bundled Sports Ticker highlights card was not found at %s; highlights card will not be available", highlights_path)
 

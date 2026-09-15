@@ -65,6 +65,8 @@ Sports Ticker bundles its own Home Assistant dashboard frontend. The integration
 
 ### Game
 
+<img width="470"  alt="image" src="https://github.com/user-attachments/assets/b21b7b24-d0a3-4530-ac9d-050c0464414a" />
+
 Use the main Sports Ticker card for a single matchup. The visual editor includes **Standard** and **Compact** layouts with options for league label, team logos, records, venue, and broadcast information.
 
 ```yaml
@@ -97,6 +99,8 @@ show_espn_link: true
 ```
 
 ### Multi-Sport Ticker
+
+<img width="470"  alt="image" src="https://github.com/user-attachments/assets/000b7836-bfc6-4437-a243-767e6bfefd59" />
 
 The scrolling ticker can combine multiple supported leagues in one responsive scoreboard and includes per-card options for ticker speed, maximum games, logos, records, and pause-on-hover behavior.
 

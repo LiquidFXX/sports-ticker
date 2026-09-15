@@ -12,7 +12,7 @@
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Custom%20Integration-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/LiquidFXX/sports-ticker/blob/main/LICENSE)
 
-**Stable release:** `v0.20.4`
+**Stable release:** `v0.20.4.1`
 
 </div>
 
@@ -248,9 +248,9 @@ Fresh data reports `stale: false`; cached fallback data reports `stale: true` wi
 
 ## Current development
 
-The current stable release is **v0.20.4**.
+The current stable release is **v0.20.4.1**.
 
-`v0.20.4` promotes the tested alpha.10 code to stable and includes the built-in Game, Game Highlights, and Multi-Sport Ticker experiences while preserving the existing Sports Ticker entity model and YAML dashboards.
+`v0.20.4.1` is a maintenance patch that carries the current README and built-in card documentation into the installed HACS release tag while preserving the v0.20.4 integration behavior and entity model.
 
 ### Planned soccer expansion
 
@@ -268,7 +268,7 @@ Confirm that its league is enabled under **Sports Ticker → Configure**, then r
 
 ### A built-in card is missing
 
-Confirm Sports Ticker is updated to `v0.20.4` or newer, restart Home Assistant, and reload the Home Assistant frontend after the integration update.
+Confirm Sports Ticker is updated to `v0.20.4.1` or newer, restart Home Assistant, and reload the Home Assistant frontend after the integration update.
 
 ### A card is blank
 

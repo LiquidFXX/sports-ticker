@@ -22,22 +22,10 @@
 
 Sports Ticker gives Home Assistant a reusable ESPN-powered sports data layer plus native dashboard cards for live games, highlights, and scrolling scoreboards. The existing Lovelace examples remain available for users who want fully custom layouts.
 
-<a href="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/NFL.md#2-scrolling-sports-ticker">
-  <img src="https://raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/NFL/nfl_multi_sport_ticker.gif" alt="Sports Ticker scrolling multi-sport Home Assistant card" width="100%">
+<a href="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/images/Recording%202026-09-15%20100745.gif">
+  <img src="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/images/Recording%202026-09-15%20100745.gif" width="100%">
 </a>
 
-<p align="center">
-  <a href="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/NFL.md#1-favorite-team-next-game">
-    <img src="https://raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/NFL/nfl_next_game_card.svg" alt="NFL favorite team next game card" width="31%">
-  </a>
-  &nbsp;
-  <a href="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/NFL.md">
-    <img src="https://raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/NFL/nfl_this_week_card.svg" alt="NFL weekly card example" width="31%">
-  </a>
-  &nbsp;
-  <a href="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/CFB.md">
-    <img src="https://raw.githubusercontent.com/LiquidFXX/sports-ticker/main/examples/images/CFB/cfb_rankings_card.webp" alt="College Football rankings card" width="31%">
-  </a>
 </p>
 
 ---

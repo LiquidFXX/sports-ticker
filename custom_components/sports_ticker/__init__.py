@@ -20,12 +20,12 @@ FRONTEND_URL = "/sports-ticker/frontend"
 CARD_FILENAME = "sports-ticker-card-v2.js"
 EDITOR_FILENAME = "sports-ticker-card-editor-v4.js"
 HIGHLIGHTS_FILENAME = "sports-ticker-highlights-card.js"
-CARD_VERSION = "0.9.0"
-CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}"
+# Change this whenever bundled frontend JavaScript changes so browsers and
+# companion-app WebViews cannot reuse a stale module or cached 404 response.
+CARD_VERSION = "0.20.4.2"
+CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}?v={CARD_VERSION}"
 EDITOR_URL = f"{FRONTEND_URL}/{EDITOR_FILENAME}?v={CARD_VERSION}"
-# Keep Highlights on a plain static URL while diagnosing the alpha.2 loader issue.
-# The working main card uses this same URL shape.
-HIGHLIGHTS_URL = f"{FRONTEND_URL}/{HIGHLIGHTS_FILENAME}"
+HIGHLIGHTS_URL = f"{FRONTEND_URL}/{HIGHLIGHTS_FILENAME}?v={CARD_VERSION}"
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 

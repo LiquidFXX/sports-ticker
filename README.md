@@ -4,6 +4,8 @@
 
 ### Turn ESPN sports data into live Home Assistant scoreboards, tickers, game cards, rankings, standings, highlights, and team-focused dashboards.
 
+
+
 [![Latest Release](https://img.shields.io/github/v/release/LiquidFXX/sports-ticker?label=Latest%20Release)](https://github.com/LiquidFXX/sports-ticker/releases/latest)
 [![Total Downloads](https://img.shields.io/github/downloads/LiquidFXX/sports-ticker/total?label=Downloads)](https://github.com/LiquidFXX/sports-ticker/releases)
 [![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5?logo=homeassistant&logoColor=white)](#installation)

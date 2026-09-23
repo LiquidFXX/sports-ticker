@@ -5,6 +5,8 @@ from pathlib import Path
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.lovelace.const import LOVELACE_DATA
+from homeassistant.components.lovelace.resources import ResourceStorageCollection
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -47,17 +49,54 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         return
 
     await hass.http.async_register_static_paths([StaticPathConfig(FRONTEND_URL, str(FRONTEND_DIR), False)])
-    add_extra_js_url(hass, CARD_URL)
+    resource_urls = [CARD_URL]
     if editor_path.exists():
-        add_extra_js_url(hass, EDITOR_URL)
+        resource_urls.append(EDITOR_URL)
     else:
         LOGGER.warning("Bundled Sports Ticker card editor was not found at %s; graphical configuration will not be available", editor_path)
 
     if highlights_path.exists():
-        add_extra_js_url(hass, HIGHLIGHTS_URL)
-        LOGGER.debug("Registered Sports Ticker highlights frontend resource: %s", HIGHLIGHTS_URL)
+        resource_urls.append(HIGHLIGHTS_URL)
     else:
         LOGGER.warning("Bundled Sports Ticker highlights card was not found at %s; highlights card will not be available", highlights_path)
+
+    await _async_register_lovelace_resources(hass, resource_urls)
+
+
+async def _async_register_lovelace_resources(hass: HomeAssistant, urls: list[str]) -> None:
+    """Register bundled cards as Lovelace module resources when possible."""
+    lovelace = hass.data.get(LOVELACE_DATA)
+    resources = getattr(lovelace, "resources", None) if lovelace else None
+
+    if isinstance(resources, ResourceStorageCollection):
+        await resources.async_get_info()
+        existing = list(resources.async_items())
+
+        for url in urls:
+            base_url = url.split("?", 1)[0]
+            match = next(
+                (item for item in existing if item.get("url", "").split("?", 1)[0] == base_url),
+                None,
+            )
+            if match:
+                if match.get("url") != url or match.get("res_type") != "module":
+                    await resources.async_update_item(
+                        match["id"], {"res_type": "module", "url": url}
+                    )
+                    LOGGER.debug("Updated Sports Ticker Lovelace resource: %s", url)
+            else:
+                created = await resources.async_create_item(
+                    {"res_type": "module", "url": url}
+                )
+                existing.append(created)
+                LOGGER.debug("Registered Sports Ticker Lovelace resource: %s", url)
+        return
+
+    # YAML/non-storage resource mode cannot be modified through the resource
+    # collection. Keep automatic loading available through the frontend API.
+    for url in urls:
+        add_extra_js_url(hass, url)
+        LOGGER.debug("Registered Sports Ticker frontend module fallback: %s", url)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

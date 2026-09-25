@@ -85,19 +85,7 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         fantasy_filter = {
             "players": {
                 "filterSlotIds": {"value": [0, 2, 4, 6, 17, 16]},
-                "filterStatsForExternalIds": {"value": [season]},
-                "filterStatsForSourceIds": {"value": [0, 1]},
-                "filterStatsForSplitTypeIds": {"value": [0]},
-                "filterStatsForTopScoringPeriodIds": {
-                    "value": week,
-                    "additionalValue": [f"00{season}", f"10{season}"],
-                },
-                "sortAppliedStatTotalForScoringPeriodId": {
-                    "sortAsc": False,
-                    "sortPriority": 1,
-                    "value": week,
-                },
-                "sortPercOwned": {"sortPriority": 2, "sortAsc": False},
+                "sortPercOwned": {"sortPriority": 1, "sortAsc": False},
                 "limit": 500,
                 "offset": 0,
             }
@@ -120,8 +108,32 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             payload = await response.json()
 
         items = payload.get("players", []) if isinstance(payload, dict) else []
+        player_ids = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            player = item.get("player", item)
+            player_id = player.get("id") or item.get("id")
+            if player_id is not None:
+                player_ids.append(player_id)
+
+        # kona_player_info is reliable for ownership/status, but ESPN does not
+        # consistently include weekly stat splits there. Fetch player cards by
+        # id and merge their stats back into the player pool.
+        try:
+            cards = await self._fetch_player_cards(season, week, player_ids)
+        except Exception:
+            # Keep fantasy data non-fatal if the deeper player-card request is
+            # temporarily unavailable. Ownership/injury data can still update.
+            cards = {}
+
         players = [
-            self._normalize_player(item, week)
+            self._normalize_player(
+                item,
+                week,
+                season,
+                cards.get(str((item.get("player", item)).get("id") or item.get("id"))),
+            )
             for item in items
             if isinstance(item, dict)
         ]
@@ -141,71 +153,86 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         return players
 
+    async def _fetch_player_cards(
+        self, season: int, week: int, player_ids: list[Any]
+    ) -> dict[str, dict[str, Any]]:
+        url = FANTASY_PLAYERS_URL.format(season=season)
+        cards: dict[str, dict[str, Any]] = {}
+
+        # Keep the filter header reasonably small. ESPN accepts batched filterIds
+        # on the league-default player-card view.
+        for offset in range(0, len(player_ids), 100):
+            batch = player_ids[offset : offset + 100]
+            if not batch:
+                continue
+            params = {"scoringPeriodId": str(week), "view": "kona_playercard"}
+            fantasy_filter = {
+                "players": {
+                    "filterIds": {"value": batch},
+                    "filterStatsForTopScoringPeriodIds": {
+                        "value": week,
+                        "additionalValue": [f"00{season}", f"10{season}"],
+                    },
+                    "filterStatsForSourceIds": {"value": [0, 1]},
+                }
+            }
+            headers = {
+                "x-fantasy-filter": json.dumps(fantasy_filter),
+                "x-fantasy-platform": "kona-PROD-1dc40132dc207d89781581d6a4c8100b3cc2458f",
+                "x-fantasy-source": "kona",
+            }
+            async with async_timeout.timeout(20):
+                response = await self.session.get(url, params=params, headers=headers)
+                if response.status != 200:
+                    raise aiohttp.ClientResponseError(
+                        response.request_info,
+                        response.history,
+                        status=response.status,
+                        message="ESPN fantasy player-card request failed",
+                        headers=response.headers,
+                    )
+                payload = await response.json()
+
+            for item in payload.get("players", []) if isinstance(payload, dict) else []:
+                if not isinstance(item, dict):
+                    continue
+                player = item.get("player", item)
+                player_id = player.get("id") or item.get("id")
+                if player_id is not None:
+                    cards[str(player_id)] = player
+
+        return cards
+
     @staticmethod
-    def _normalize_player(item: dict[str, Any], week: int) -> dict[str, Any]:
+    def _normalize_player(
+        item: dict[str, Any],
+        week: int,
+        season: int,
+        card_player: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         player = item.get("player", item)
-        pool = item.get("playerPoolEntry") if isinstance(item.get("playerPoolEntry"), dict) else {}
+        stats_player = card_player if isinstance(card_player, dict) else player
+        stats = stats_player.get("stats") if isinstance(stats_player.get("stats"), list) else []
 
-        # ESPN's league-default kona response stores scoring data under
-        # playerPoolEntry.stats. Older/player-pool responses may put it on
-        # player.stats, so keep that as a compatibility fallback.
-        stats = pool.get("stats") if isinstance(pool.get("stats"), list) else []
-        if not stats and isinstance(player.get("stats"), list):
-            stats = player.get("stats")
-
-        def stat_kind(stat: dict[str, Any]) -> Any:
-            return stat.get("statSourceId", stat.get("statTypeId"))
-
-        weekly = next(
-            (
-                stat
-                for stat in stats
-                if isinstance(stat, dict)
-                and stat.get("scoringPeriodId") == week
-                and stat_kind(stat) == 0
-            ),
-            None,
+        weekly = NFLFantasyCoordinator._find_stat(
+            stats, season=season, week=week, source=0
         )
-        projected = next(
-            (
-                stat
-                for stat in stats
-                if isinstance(stat, dict)
-                and stat.get("scoringPeriodId") == week
-                and stat_kind(stat) in (1, 2)
-            ),
-            None,
+        projected = NFLFantasyCoordinator._find_stat(
+            stats, season=season, week=week, source=1
         )
 
-        # appliedStatTotal is ESPN's current scoring-period total on the
-        # player pool entry. Use it if the matching weekly stat entry is absent.
-        fantasy_points = (
-            weekly.get("appliedTotal")
-            if weekly and weekly.get("appliedTotal") is not None
-            else pool.get("appliedStatTotal")
-        )
-        projected_points = (
-            projected.get("appliedTotal") if projected else None
-        )
+        fantasy_points = weekly.get("appliedTotal") if weekly else None
+        projected_points = projected.get("appliedTotal") if projected else None
 
-        ownership = (
-            pool.get("ownership")
-            if isinstance(pool.get("ownership"), dict)
-            else player.get("ownership")
-            if isinstance(player.get("ownership"), dict)
-            else {}
-        )
-        rostered_pct = pool.get("percentOwned", ownership.get("percentOwned"))
-        start_pct = pool.get("percentStarted", ownership.get("percentStarted"))
-        roster_change = ownership.get("percentChange")
-
+        ownership = player.get("ownership") if isinstance(player.get("ownership"), dict) else {}
         injury_id = player.get("injuryStatus")
+
         weekly_stats = {}
         if weekly:
-            if isinstance(weekly.get("appliedStats"), dict):
-                weekly_stats = weekly.get("appliedStats")
-            elif isinstance(weekly.get("stats"), dict):
+            if isinstance(weekly.get("stats"), dict):
                 weekly_stats = weekly.get("stats")
+            elif isinstance(weekly.get("appliedStats"), dict):
+                weekly_stats = weekly.get("appliedStats")
 
         return {
             "athlete_id": player.get("id") or item.get("id"),
@@ -215,13 +242,32 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "position": POSITIONS.get(player.get("defaultPositionId")),
             "fantasy_points": fantasy_points,
             "projected_points": projected_points,
-            "rostered_pct": rostered_pct,
-            "start_pct": start_pct,
-            "roster_change": roster_change,
+            "rostered_pct": ownership.get("percentOwned"),
+            "start_pct": ownership.get("percentStarted"),
+            "roster_change": ownership.get("percentChange"),
             "injury_status": INJURY_STATUS.get(injury_id, injury_id),
             "active": player.get("active"),
             "stats": weekly_stats,
         }
+
+    @staticmethod
+    def _find_stat(
+        stats: list[dict[str, Any]], *, season: int, week: int, source: int
+    ) -> dict[str, Any] | None:
+        for stat in stats:
+            if not isinstance(stat, dict):
+                continue
+            if stat.get("seasonId") not in (None, season):
+                continue
+            if stat.get("scoringPeriodId") != week:
+                continue
+            if stat.get("statSourceId") != source:
+                continue
+            split_type = stat.get("statSplitTypeId")
+            if split_type not in (None, 1):
+                continue
+            return stat
+        return None
 
     async def _fetch_injuries(self) -> list[dict[str, Any]]:
         async with async_timeout.timeout(20):

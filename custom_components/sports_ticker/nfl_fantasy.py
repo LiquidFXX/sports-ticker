@@ -43,9 +43,14 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if injury:
                 player["injury"] = injury
 
-        leaders: dict[str, list[dict[str, Any]]] = {"overall": players[:25]}
+        scored_players = [
+            player for player in players if player.get("fantasy_points") is not None
+        ]
+        leaders: dict[str, list[dict[str, Any]]] = {"overall": scored_players[:25]}
         for position in ("QB", "RB", "WR", "TE", "K", "D/ST"):
-            leaders[position.lower().replace("/", "")]=[p for p in players if p.get("position") == position][:25]
+            leaders[position.lower().replace("/", "")] = [
+                player for player in scored_players if player.get("position") == position
+            ][:25]
 
         return {"season": season, "week": week, "scoring": "espn_default", "leaders": leaders, "players": players[:300], "injuries": injuries, "updated_at": dt_util.utcnow().isoformat()}
 

@@ -14,6 +14,7 @@ from .coordinator import MLB_PLAYER_LEADERS_KEY, SportsTickerCoordinator
 from .league_data import GENERIC_STANDINGS_LEAGUES, POSTSEASON_LEAGUES, TEAM_LEAGUES
 from .mlb_standings import ESPNMLBStandingsRaw, MLBStandingsCoordinator
 from .next_game import ESPNFavoriteTeamNextGame, FavoriteTeamScheduleCoordinator
+from .nfl_fantasy import ESPNNFLFantasyRaw, NFLFantasyCoordinator
 from .nfl_standings import ESPNNFLStandingsRaw, NFLStandingsCoordinator
 from .postseason import ESPNPostseason, PostseasonCoordinator
 from .standings import ESPNLeagueStandingsRaw, LeagueStandingsCoordinator
@@ -36,6 +37,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     if "nfl" in leagues:
         standings_coordinator = NFLStandingsCoordinator(hass, entry, coordinator)
         await standings_coordinator.async_load_cached_data(); await standings_coordinator.async_config_entry_first_refresh(); entities.append(ESPNNFLStandingsRaw(standings_coordinator))
+        fantasy_coordinator = NFLFantasyCoordinator(hass, entry)
+        await fantasy_coordinator.async_config_entry_first_refresh(); entities.append(ESPNNFLFantasyRaw(fantasy_coordinator))
 
     if "mlb" in leagues:
         mlb_standings_coordinator = MLBStandingsCoordinator(hass, entry)

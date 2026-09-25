@@ -52,15 +52,26 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _week_from_nfl_sensor(self) -> int:
         state = self.hass.states.get("sensor.espn_nfl_scoreboard_raw")
         if state:
-            season = state.attributes.get("season")
-            if isinstance(season, dict):
-                for key in ("week", "type"):
-                    value = season.get(key)
-                    if isinstance(value, int) and 1 <= value <= 22:
-                        return value
             week = state.attributes.get("week")
-            if isinstance(week, int):
+            if isinstance(week, int) and 1 <= week <= 22:
                 return week
+            if isinstance(week, dict):
+                number = week.get("number")
+                if isinstance(number, int) and 1 <= number <= 22:
+                    return number
+
+            events = state.attributes.get("events")
+            if isinstance(events, list):
+                for event in events:
+                    if not isinstance(event, dict):
+                        continue
+                    event_week = event.get("week")
+                    if isinstance(event_week, dict):
+                        number = event_week.get("number")
+                        if isinstance(number, int) and 1 <= number <= 22:
+                            return number
+                    if isinstance(event_week, int) and 1 <= event_week <= 22:
+                        return event_week
         return 1
 
     async def _fetch_players(self, season: int, week: int) -> list[dict[str, Any]]:

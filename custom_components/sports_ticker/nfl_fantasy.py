@@ -144,13 +144,84 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     @staticmethod
     def _normalize_player(item: dict[str, Any], week: int) -> dict[str, Any]:
         player = item.get("player", item)
-        athlete_id = player.get("id")
-        stats = player.get("stats") if isinstance(player.get("stats"), list) else []
-        weekly = next((s for s in stats if isinstance(s, dict) and s.get("scoringPeriodId") == week and s.get("statSourceId") == 0), None)
-        projected = next((s for s in stats if isinstance(s, dict) and s.get("scoringPeriodId") == week and s.get("statSourceId") == 1), None)
-        ownership = player.get("ownership") if isinstance(player.get("ownership"), dict) else {}
+        pool = item.get("playerPoolEntry") if isinstance(item.get("playerPoolEntry"), dict) else {}
+
+        # ESPN's league-default kona response stores scoring data under
+        # playerPoolEntry.stats. Older/player-pool responses may put it on
+        # player.stats, so keep that as a compatibility fallback.
+        stats = pool.get("stats") if isinstance(pool.get("stats"), list) else []
+        if not stats and isinstance(player.get("stats"), list):
+            stats = player.get("stats")
+
+        def stat_kind(stat: dict[str, Any]) -> Any:
+            return stat.get("statSourceId", stat.get("statTypeId"))
+
+        weekly = next(
+            (
+                stat
+                for stat in stats
+                if isinstance(stat, dict)
+                and stat.get("scoringPeriodId") == week
+                and stat_kind(stat) == 0
+            ),
+            None,
+        )
+        projected = next(
+            (
+                stat
+                for stat in stats
+                if isinstance(stat, dict)
+                and stat.get("scoringPeriodId") == week
+                and stat_kind(stat) in (1, 2)
+            ),
+            None,
+        )
+
+        # appliedStatTotal is ESPN's current scoring-period total on the
+        # player pool entry. Use it if the matching weekly stat entry is absent.
+        fantasy_points = (
+            weekly.get("appliedTotal")
+            if weekly and weekly.get("appliedTotal") is not None
+            else pool.get("appliedStatTotal")
+        )
+        projected_points = (
+            projected.get("appliedTotal") if projected else None
+        )
+
+        ownership = (
+            pool.get("ownership")
+            if isinstance(pool.get("ownership"), dict)
+            else player.get("ownership")
+            if isinstance(player.get("ownership"), dict)
+            else {}
+        )
+        rostered_pct = pool.get("percentOwned", ownership.get("percentOwned"))
+        start_pct = pool.get("percentStarted", ownership.get("percentStarted"))
+        roster_change = ownership.get("percentChange")
+
         injury_id = player.get("injuryStatus")
-        return {"athlete_id": athlete_id, "name": player.get("fullName") or player.get("displayName"), "short_name": player.get("shortName"), "team_id": player.get("proTeamId"), "position": POSITIONS.get(player.get("defaultPositionId")), "fantasy_points": weekly.get("appliedTotal") if weekly else None, "projected_points": projected.get("appliedTotal") if projected else None, "rostered_pct": ownership.get("percentOwned"), "start_pct": ownership.get("percentStarted"), "roster_change": ownership.get("percentChange"), "injury_status": INJURY_STATUS.get(injury_id, injury_id), "active": player.get("active"), "stats": weekly.get("stats", {}) if weekly else {}}
+        weekly_stats = {}
+        if weekly:
+            if isinstance(weekly.get("appliedStats"), dict):
+                weekly_stats = weekly.get("appliedStats")
+            elif isinstance(weekly.get("stats"), dict):
+                weekly_stats = weekly.get("stats")
+
+        return {
+            "athlete_id": player.get("id") or item.get("id"),
+            "name": player.get("fullName") or player.get("displayName"),
+            "short_name": player.get("shortName"),
+            "team_id": player.get("proTeamId"),
+            "position": POSITIONS.get(player.get("defaultPositionId")),
+            "fantasy_points": fantasy_points,
+            "projected_points": projected_points,
+            "rostered_pct": rostered_pct,
+            "start_pct": start_pct,
+            "roster_change": roster_change,
+            "injury_status": INJURY_STATUS.get(injury_id, injury_id),
+            "active": player.get("active"),
+            "stats": weekly_stats,
+        }
 
     async def _fetch_injuries(self) -> list[dict[str, Any]]:
         async with async_timeout.timeout(20):

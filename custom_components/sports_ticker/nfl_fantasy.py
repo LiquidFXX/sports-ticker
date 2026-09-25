@@ -43,16 +43,19 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if injury:
                 player["injury"] = injury
 
-        scored_players = [
-            player for player in players if player.get("fantasy_points") is not None
-        ]
-        leaders: dict[str, list[dict[str, Any]]] = {"overall": scored_players[:25]}
-        for position in ("QB", "RB", "WR", "TE", "K", "D/ST"):
-            leaders[position.lower().replace("/", "")] = [
-                player for player in scored_players if player.get("position") == position
-            ][:25]
+        leaders = self._build_leaders(players, "fantasy_points")
+        season_leaders = self._build_leaders(players, "season_fantasy_points")
 
-        return {"season": season, "week": week, "scoring": "espn_default", "leaders": leaders, "players": players[:300], "injuries": injuries, "updated_at": dt_util.utcnow().isoformat()}
+        return {
+            "season": season,
+            "week": week,
+            "scoring": "espn_default",
+            "leaders": leaders,
+            "season_leaders": season_leaders,
+            "players": players[:300],
+            "injuries": injuries,
+            "updated_at": dt_util.utcnow().isoformat(),
+        }
 
     def _week_from_nfl_sensor(self) -> int:
         state = self.hass.states.get("sensor.espn_nfl_scoreboard_raw")
@@ -220,9 +223,21 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         projected = NFLFantasyCoordinator._find_stat(
             stats, season=season, week=week, source=1
         )
+        season_actual = NFLFantasyCoordinator._find_season_stat(
+            stats, season=season, source=0
+        )
+        season_projected = NFLFantasyCoordinator._find_season_stat(
+            stats, season=season, source=1
+        )
 
         fantasy_points = weekly.get("appliedTotal") if weekly else None
         projected_points = projected.get("appliedTotal") if projected else None
+        season_fantasy_points = (
+            season_actual.get("appliedTotal") if season_actual else None
+        )
+        season_projected_points = (
+            season_projected.get("appliedTotal") if season_projected else None
+        )
 
         ownership = player.get("ownership") if isinstance(player.get("ownership"), dict) else {}
         injury_id = player.get("injuryStatus")
@@ -234,6 +249,13 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             elif isinstance(weekly.get("appliedStats"), dict):
                 weekly_stats = weekly.get("appliedStats")
 
+        season_stats = {}
+        if season_actual:
+            if isinstance(season_actual.get("stats"), dict):
+                season_stats = season_actual.get("stats")
+            elif isinstance(season_actual.get("appliedStats"), dict):
+                season_stats = season_actual.get("appliedStats")
+
         return {
             "athlete_id": player.get("id") or item.get("id"),
             "name": player.get("fullName") or player.get("displayName"),
@@ -242,13 +264,41 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "position": POSITIONS.get(player.get("defaultPositionId")),
             "fantasy_points": fantasy_points,
             "projected_points": projected_points,
+            "season_fantasy_points": season_fantasy_points,
+            "season_projected_points": season_projected_points,
             "rostered_pct": ownership.get("percentOwned"),
             "start_pct": ownership.get("percentStarted"),
             "roster_change": ownership.get("percentChange"),
             "injury_status": INJURY_STATUS.get(injury_id, injury_id),
             "active": player.get("active"),
             "stats": weekly_stats,
+            "season_stats": season_stats,
         }
+
+    @staticmethod
+    def _build_leaders(
+        players: list[dict[str, Any]], points_key: str
+    ) -> dict[str, list[dict[str, Any]]]:
+        scored_players = [
+            player for player in players if player.get(points_key) is not None
+        ]
+        scored_players.sort(
+            key=lambda player: (
+                NFLFantasyCoordinator._number(player.get(points_key)),
+                NFLFantasyCoordinator._number(player.get("rostered_pct")),
+            ),
+            reverse=True,
+        )
+        leaders: dict[str, list[dict[str, Any]]] = {
+            "overall": scored_players[:25]
+        }
+        for position in ("QB", "RB", "WR", "TE", "K", "D/ST"):
+            leaders[position.lower().replace("/", "")] = [
+                player
+                for player in scored_players
+                if player.get("position") == position
+            ][:25]
+        return leaders
 
     @staticmethod
     def _find_stat(
@@ -265,6 +315,25 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 continue
             split_type = stat.get("statSplitTypeId")
             if split_type not in (None, 1):
+                continue
+            return stat
+        return None
+
+    @staticmethod
+    def _find_season_stat(
+        stats: list[dict[str, Any]], *, season: int, source: int
+    ) -> dict[str, Any] | None:
+        for stat in stats:
+            if not isinstance(stat, dict):
+                continue
+            if stat.get("seasonId") not in (None, season):
+                continue
+            if stat.get("scoringPeriodId") not in (None, 0):
+                continue
+            if stat.get("statSourceId") != source:
+                continue
+            split_type = stat.get("statSplitTypeId")
+            if split_type not in (None, 0):
                 continue
             return stat
         return None

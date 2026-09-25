@@ -17,6 +17,14 @@ FANTASY_PLAYERS_URL = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/s
 NFL_INJURIES_URL = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/injuries"
 POSITIONS = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "D/ST"}
 INJURY_STATUS = {0: "Active", 1: "Questionable", 2: "Doubtful", 3: "Out", 4: "Injured Reserve", 5: "PUP", 6: "Suspended"}
+NFL_TEAM_ABBR_BY_ESPN_ID = {
+    1: "ATL", 2: "BUF", 3: "CHI", 4: "CIN", 5: "CLE", 6: "DAL",
+    7: "DEN", 8: "DET", 9: "GB", 10: "TEN", 11: "IND", 12: "KC",
+    13: "LV", 14: "LAR", 15: "MIA", 16: "MIN", 17: "NE", 18: "NO",
+    19: "NYG", 20: "NYJ", 21: "PHI", 22: "ARI", 23: "PIT", 24: "LAC",
+    25: "SF", 26: "SEA", 27: "TB", 28: "WAS", 29: "CAR", 30: "JAX",
+    33: "BAL", 34: "HOU",
+}
 
 
 class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -33,7 +41,7 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         week = self._week_from_nfl_sensor()
         try:
             players = await self._fetch_players(season, week)
-            injuries = await self._fetch_injuries()
+            injuries = await self._fetch_injuries(players)
         except Exception as err:
             raise UpdateFailed(f"Unable to update ESPN NFL fantasy data: {err}") from err
 
@@ -174,7 +182,11 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "filterIds": {"value": batch},
                     "filterStatsForTopScoringPeriodIds": {
                         "value": week,
-                        "additionalValue": [f"00{season}", f"10{season}"],
+                        "additionalValue": [
+                            f"00{season}",
+                            f"10{season}",
+                            f"11{season}{week}",
+                        ],
                     },
                     "filterStatsForSourceIds": {"value": [0, 1]},
                 }
@@ -338,24 +350,178 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return stat
         return None
 
-    async def _fetch_injuries(self) -> list[dict[str, Any]]:
+    async def _fetch_injuries(
+        self, players: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         async with async_timeout.timeout(20):
             response = await self.session.get(NFL_INJURIES_URL)
             if response.status != 200:
-                raise aiohttp.ClientResponseError(response.request_info, response.history, status=response.status, message="ESPN NFL injuries request failed", headers=response.headers)
+                raise aiohttp.ClientResponseError(
+                    response.request_info,
+                    response.history,
+                    status=response.status,
+                    message="ESPN NFL injuries request failed",
+                    headers=response.headers,
+                )
             payload = await response.json()
+
+        players_by_id = {
+            str(player.get("athlete_id")): player
+            for player in players
+            if player.get("athlete_id") is not None
+        }
+        players_by_name = {
+            self._normalize_name(player.get("name")): player
+            for player in players
+            if player.get("name")
+        }
+
         injuries: list[dict[str, Any]] = []
         for team in payload.get("injuries", []) if isinstance(payload, dict) else []:
-            if not isinstance(team, dict): continue
-            team_info = team.get("team", {}) if isinstance(team.get("team"), dict) else {}
+            if not isinstance(team, dict):
+                continue
+
+            team_id = team.get("id")
+            if team_id is None and isinstance(team.get("team"), dict):
+                team_id = team.get("team", {}).get("id")
+            try:
+                team_id_num = int(team_id) if team_id is not None else None
+            except (TypeError, ValueError):
+                team_id_num = None
+
+            team_name = (
+                team.get("displayName")
+                or (
+                    team.get("team", {}).get("displayName")
+                    if isinstance(team.get("team"), dict)
+                    else None
+                )
+            )
+            team_abbr = (
+                team.get("abbreviation")
+                or (
+                    team.get("team", {}).get("abbreviation")
+                    if isinstance(team.get("team"), dict)
+                    else None
+                )
+                or NFL_TEAM_ABBR_BY_ESPN_ID.get(team_id_num)
+            )
+
             for item in team.get("injuries", []) if isinstance(team.get("injuries"), list) else []:
-                if not isinstance(item, dict): continue
-                athlete = item.get("athlete", {}) if isinstance(item.get("athlete"), dict) else {}
-                position = athlete.get("position", {}) if isinstance(athlete.get("position"), dict) else {}
+                if not isinstance(item, dict):
+                    continue
+
+                status = str(item.get("status") or "").strip()
+                if not status or status.lower() == "active":
+                    continue
+
+                athlete = (
+                    item.get("athlete")
+                    if isinstance(item.get("athlete"), dict)
+                    else {}
+                )
+                position = (
+                    athlete.get("position")
+                    if isinstance(athlete.get("position"), dict)
+                    else {}
+                )
                 pos = position.get("abbreviation")
-                if pos not in {"QB", "RB", "WR", "TE", "K"}: continue
-                injuries.append({"athlete_id": athlete.get("id"), "name": athlete.get("displayName") or athlete.get("fullName"), "short_name": athlete.get("shortName"), "team": team_info.get("abbreviation"), "team_name": team_info.get("displayName"), "position": pos, "status": item.get("status"), "type": item.get("type", {}).get("description") if isinstance(item.get("type"), dict) else item.get("type"), "detail": item.get("details"), "date": item.get("date"), "headshot": athlete.get("headshot", {}).get("href") if isinstance(athlete.get("headshot"), dict) else None})
+                if pos not in {"QB", "RB", "WR", "TE", "K"}:
+                    continue
+
+                athlete_id = self._injury_athlete_id(athlete)
+                player_match = (
+                    players_by_id.get(str(athlete_id))
+                    if athlete_id is not None
+                    else None
+                )
+                if player_match is None:
+                    player_match = players_by_name.get(
+                        self._normalize_name(
+                            athlete.get("displayName") or athlete.get("fullName")
+                        )
+                    )
+
+                if athlete_id is None and player_match is not None:
+                    athlete_id = player_match.get("athlete_id")
+
+                player_team_id = (
+                    player_match.get("team_id")
+                    if isinstance(player_match, dict)
+                    else None
+                )
+                if team_abbr is None:
+                    try:
+                        team_abbr = NFL_TEAM_ABBR_BY_ESPN_ID.get(
+                            int(player_team_id)
+                        )
+                    except (TypeError, ValueError):
+                        pass
+
+                details = (
+                    item.get("details")
+                    if isinstance(item.get("details"), dict)
+                    else None
+                )
+                injury_type = details.get("type") if details else None
+                if not injury_type:
+                    raw_type = item.get("type")
+                    if isinstance(raw_type, dict):
+                        injury_type = (
+                            raw_type.get("description")
+                            or raw_type.get("abbreviation")
+                        )
+                    else:
+                        injury_type = raw_type
+
+                injuries.append(
+                    {
+                        "athlete_id": athlete_id,
+                        "name": athlete.get("displayName") or athlete.get("fullName"),
+                        "short_name": athlete.get("shortName"),
+                        "team": team_abbr,
+                        "team_name": team_name,
+                        "position": pos,
+                        "status": status,
+                        "type": injury_type,
+                        "detail": details,
+                        "date": item.get("date"),
+                        "headshot": (
+                            athlete.get("headshot", {}).get("href")
+                            if isinstance(athlete.get("headshot"), dict)
+                            else None
+                        ),
+                    }
+                )
+
+        injuries.sort(
+            key=lambda row: str(row.get("date") or ""),
+            reverse=True,
+        )
         return injuries
+
+    @staticmethod
+    def _injury_athlete_id(athlete: dict[str, Any]) -> str | None:
+        athlete_id = athlete.get("id")
+        if athlete_id not in (None, ""):
+            return str(athlete_id)
+
+        for link in athlete.get("links", []) if isinstance(athlete.get("links"), list) else []:
+            if not isinstance(link, dict):
+                continue
+            href = str(link.get("href") or "")
+            marker = "/id/"
+            if marker not in href:
+                continue
+            tail = href.split(marker, 1)[1]
+            candidate = tail.split("/", 1)[0]
+            if candidate.isdigit():
+                return candidate
+        return None
+
+    @staticmethod
+    def _normalize_name(value: Any) -> str:
+        return " ".join(str(value or "").strip().lower().split())
 
     @staticmethod
     def _number(value: Any) -> float:

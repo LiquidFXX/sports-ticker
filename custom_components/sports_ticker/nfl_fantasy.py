@@ -13,7 +13,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, CoordinatorEntity, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-FANTASY_PLAYERS_URL = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{season}/players"
+FANTASY_PLAYERS_URL = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{season}/segments/0/leaguedefaults/3"
 NFL_INJURIES_URL = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/injuries"
 POSITIONS = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "D/ST"}
 INJURY_STATUS = {0: "Active", 1: "Questionable", 2: "Doubtful", 3: "Out", 4: "Injured Reserve", 5: "PUP", 6: "Suspended"}
@@ -77,17 +77,63 @@ class NFLFantasyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _fetch_players(self, season: int, week: int) -> list[dict[str, Any]]:
         url = FANTASY_PLAYERS_URL.format(season=season)
         params = {"scoringPeriodId": str(week), "view": "kona_player_info"}
-        fantasy_filter = {"players": {"limit": 500, "sortPercOwned": {"sortPriority": 1, "sortAsc": False}}}
-        headers = {"x-fantasy-filter": json.dumps(fantasy_filter), "x-fantasy-platform": "kona-PROD-1dc40132dc207d89781581d6a4c8100b3cc2458f", "x-fantasy-source": "kona"}
+        fantasy_filter = {
+            "players": {
+                "filterSlotIds": {"value": [0, 2, 4, 6, 17, 16]},
+                "filterStatsForExternalIds": {"value": [season]},
+                "filterStatsForSourceIds": {"value": [0, 1]},
+                "filterStatsForSplitTypeIds": {"value": [0]},
+                "filterStatsForTopScoringPeriodIds": {
+                    "value": week,
+                    "additionalValue": [f"00{season}", f"10{season}"],
+                },
+                "sortAppliedStatTotalForScoringPeriodId": {
+                    "sortAsc": False,
+                    "sortPriority": 1,
+                    "value": week,
+                },
+                "sortPercOwned": {"sortPriority": 2, "sortAsc": False},
+                "limit": 500,
+                "offset": 0,
+            }
+        }
+        headers = {
+            "x-fantasy-filter": json.dumps(fantasy_filter),
+            "x-fantasy-platform": "kona-PROD-1dc40132dc207d89781581d6a4c8100b3cc2458f",
+            "x-fantasy-source": "kona",
+        }
         async with async_timeout.timeout(20):
             response = await self.session.get(url, params=params, headers=headers)
             if response.status != 200:
-                raise aiohttp.ClientResponseError(response.request_info, response.history, status=response.status, message="ESPN fantasy players request failed", headers=response.headers)
+                raise aiohttp.ClientResponseError(
+                    response.request_info,
+                    response.history,
+                    status=response.status,
+                    message="ESPN fantasy players request failed",
+                    headers=response.headers,
+                )
             payload = await response.json()
-        items = payload if isinstance(payload, list) else payload.get("players", []) if isinstance(payload, dict) else []
-        players = [self._normalize_player(item, week) for item in items if isinstance(item, dict)]
-        players = [p for p in players if p.get("name") and p.get("position")]
-        players.sort(key=lambda p: self._number(p.get("fantasy_points")), reverse=True)
+
+        items = payload.get("players", []) if isinstance(payload, dict) else []
+        players = [
+            self._normalize_player(item, week)
+            for item in items
+            if isinstance(item, dict)
+        ]
+        players = [
+            player
+            for player in players
+            if player.get("name")
+            and player.get("position")
+            and player.get("active") is not False
+        ]
+        players.sort(
+            key=lambda player: (
+                self._number(player.get("fantasy_points")),
+                self._number(player.get("rostered_pct")),
+            ),
+            reverse=True,
+        )
         return players
 
     @staticmethod

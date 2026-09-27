@@ -4,6 +4,7 @@ PLATFORMS = ["sensor"]
 
 CONF_LEAGUES = "leagues"
 CONF_FAVORITE_TEAMS = "favorite_teams"
+CONF_FAVORITE_TEAM_NAMES = "favorite_team_names"
 CONF_POLL_INTERVAL = "poll_interval"
 
 # Ticker UI helpers exposed as sensor attributes for button-card use

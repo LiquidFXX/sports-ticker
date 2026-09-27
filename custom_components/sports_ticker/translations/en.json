@@ -36,7 +36,7 @@
           "custom_favorite_team_cfb": "Custom College Football team abbreviation"
         },
         "data_description": {
-          "custom_favorite_team_cfb": "Optional. Enter the ESPN team abbreviation for a school not listed above. This value overrides the College Football dropdown."
+          "custom_favorite_team_cfb": "Optional. If your school is not listed above, leave the College Football dropdown on No favorite team and enter its ESPN team abbreviation here."
         }
       }
     },
@@ -81,7 +81,7 @@
           "custom_favorite_team_cfb": "Custom College Football team abbreviation"
         },
         "data_description": {
-          "custom_favorite_team_cfb": "Optional. Enter the ESPN team abbreviation for a school not listed above. This value overrides the College Football dropdown."
+          "custom_favorite_team_cfb": "Optional. If your school is not listed above, leave the College Football dropdown on No favorite team and enter its ESPN team abbreviation here."
         }
       }
     },

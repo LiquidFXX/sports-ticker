@@ -68,6 +68,7 @@ preset: game
 ```
 
 ### Game Highlights
+<img width="470" alt="image" src="https://github.com/user-attachments/assets/efb164f8-8d22-4c0e-ac38-54c57a590c35" />
 
 The Highlights card reads playable ESPN video metadata directly from the selected raw scoreboard sensor.
 
@@ -91,6 +92,7 @@ show_espn_link: true
 ```
 
 ### College Football Rankings
+<img width="470" alt="image" src="https://github.com/user-attachments/assets/0fef86ea-9b9d-441c-84a4-160a3d343b56" />
 
 The built-in College Football Rankings card uses `sensor.espn_college_football_rankings` automatically. In the visual editor, choose **CFB Rankings** and configure the poll, number of teams, Top 5 strip, team records, poll points, first-place votes, and ranking movement.
 

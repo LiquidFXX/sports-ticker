@@ -9,7 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .cfb_rankings import CFBRankingsCoordinator, ESPNCFBRankings
-from .const import DOMAIN, CONF_LEAGUES, CONF_FAVORITE_TEAMS, LEAGUES, LEAGUE_LABELS, TEAM_OPTIONS, CONF_TICKER_SPEED, DEFAULT_TICKER_SPEED, CONF_TICKER_THEME, DEFAULT_TICKER_THEME
+from .const import DOMAIN, CONF_LEAGUES, CONF_FAVORITE_TEAMS, CONF_FAVORITE_TEAM_NAMES, LEAGUES, LEAGUE_LABELS, TEAM_OPTIONS, CONF_TICKER_SPEED, DEFAULT_TICKER_SPEED, CONF_TICKER_THEME, DEFAULT_TICKER_THEME
 from .coordinator import MLB_PLAYER_LEADERS_KEY, SportsTickerCoordinator
 from .league_data import GENERIC_STANDINGS_LEAGUES, POSTSEASON_LEAGUES, TEAM_LEAGUES
 from .mlb_standings import ESPNMLBStandingsRaw, MLBStandingsCoordinator
@@ -95,6 +95,11 @@ class ESPNRawScoreboard(CoordinatorEntity[SportsTickerCoordinator], SensorEntity
         if not favorite_team: return None
         for team in TEAM_OPTIONS.get(self.league, []):
             if team.get("value") == favorite_team: return team.get("label")
+        opts = {**self.coordinator.entry.data, **self.coordinator.entry.options}
+        favorite_names = opts.get(CONF_FAVORITE_TEAM_NAMES, {})
+        if isinstance(favorite_names, dict):
+            custom_name = str(favorite_names.get(self.league, "") or "").strip()
+            if custom_name: return custom_name
         return favorite_team
 
 

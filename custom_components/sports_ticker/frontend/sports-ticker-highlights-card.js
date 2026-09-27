@@ -1,4 +1,4 @@
-const SPORTS_TICKER_HIGHLIGHTS_VERSION = "0.1.0";
+const SPORTS_TICKER_HIGHLIGHTS_VERSION = "0.1.1";
 
 const HIGHLIGHT_SPORTS = {
   nfl: { label: "NFL", entity: "sensor.espn_nfl_scoreboard_raw" },
@@ -26,7 +26,15 @@ const hArr = (value) => Array.isArray(value) ? value : [];
 
 class SportsTickerHighlightsCard extends HTMLElement {
   static getStubConfig(hass) {
-    const entity = Object.values(HIGHLIGHT_SPORTS).find((sport) => hass?.states?.[sport.entity])?.entity;
+    const entity = Object.entries(HIGHLIGHT_SPORTS).map(([league, sport]) => {
+      const fallback = hass?.states?.[sport.entity];
+      if (fallback && Array.isArray(fallback.attributes?.events)) return sport.entity;
+      return Object.entries(hass?.states ?? {}).find(([entityId, state]) =>
+        entityId.startsWith("sensor.") &&
+        Array.isArray(state?.attributes?.events) &&
+        String(state?.attributes?.league || "").trim().toLowerCase() === league
+      )?.[0];
+    }).find(Boolean);
     return { entity, favorite_only: false, prefer_favorite: true, show_recap: true, show_espn_link: true };
   }
 

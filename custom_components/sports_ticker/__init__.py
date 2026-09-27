@@ -24,7 +24,7 @@ EDITOR_FILENAME = "sports-ticker-card-editor-v4.js"
 HIGHLIGHTS_FILENAME = "sports-ticker-highlights-card.js"
 # Change this whenever bundled frontend JavaScript changes so browsers and
 # companion-app WebViews cannot reuse a stale module or cached 404 response.
-CARD_VERSION = "0.20.5.5"
+CARD_VERSION = "0.20.6.1"
 CARD_URL = f"{FRONTEND_URL}/{CARD_FILENAME}?v={CARD_VERSION}"
 EDITOR_URL = f"{FRONTEND_URL}/{EDITOR_FILENAME}?v={CARD_VERSION}"
 HIGHLIGHTS_URL = f"{FRONTEND_URL}/{HIGHLIGHTS_FILENAME}?v={CARD_VERSION}"

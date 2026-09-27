@@ -12,7 +12,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_FAVORITE_TEAMS, CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL, TEAM_OPTIONS
+from .const import CONF_FAVORITE_TEAM_NAMES, CONF_FAVORITE_TEAMS, CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL, TEAM_OPTIONS
 from .league_data import TEAM_LEAGUES, league_profile, site_resource_url
 from .team_schedule import current_streak, normalize_recent_games, normalize_upcoming_games, recent_form, recent_record
 
@@ -214,6 +214,11 @@ class ESPNFavoriteTeamNextGame(CoordinatorEntity[FavoriteTeamScheduleCoordinator
         if not favorite: return None
         for team in TEAM_OPTIONS.get(self.league, []):
             if team.get("value") == favorite: return team.get("label")
+        opts = {**self.coordinator.entry.data, **self.coordinator.entry.options}
+        favorite_names = opts.get(CONF_FAVORITE_TEAM_NAMES, {})
+        if isinstance(favorite_names, dict):
+            custom_name = str(favorite_names.get(self.league, "") or "").strip()
+            if custom_name: return custom_name
         return favorite
 
 

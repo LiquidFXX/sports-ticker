@@ -231,7 +231,7 @@ def _submitted_favorites(
 
     for league in selected_leagues:
         value = user_input.get(_favorite_field(league), "")
-        if league == "cfb":
+        if league == "cfb" and not value:
             custom_value = str(
                 user_input.get(_custom_favorite_field(league), "") or ""
             ).strip().upper()

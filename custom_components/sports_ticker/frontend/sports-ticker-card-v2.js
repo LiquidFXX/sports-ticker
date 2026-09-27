@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.6.2";
+const CARD_VERSION = "0.6.3";
 
 const htmlEscape = (value) => String(value ?? "")
   .replaceAll("&", "&amp;")
@@ -23,6 +23,25 @@ const SPORT_DEFS = {
   seriea: { label: "SERIE A", entity: "sensor.espn_seriea_scoreboard_raw", kind: "soccer", accent: "#2563eb" },
   ligue1: { label: "LIGUE 1", entity: "sensor.espn_ligue1_scoreboard_raw", kind: "soccer", accent: "#1d4ed8" },
   ucl: { label: "UCL", entity: "sensor.espn_ucl_scoreboard_raw", kind: "soccer", accent: "#4338ca" },
+};
+
+const scoreboardEntityForLeague = (hass, league) => {
+  const def = SPORT_DEFS[league];
+  if (!def || !hass?.states) return null;
+  const fallback = hass.states[def.entity];
+  if (fallback && Array.isArray(fallback.attributes?.events)) return def.entity;
+  const match = Object.entries(hass.states).find(([entityId, state]) =>
+    entityId.startsWith("sensor.") &&
+    Array.isArray(state?.attributes?.events) &&
+    String(state?.attributes?.league || "").trim().toLowerCase() === league
+  );
+  return match?.[0] || null;
+};
+
+const leagueForScoreboardEntity = (hass, entityId) => {
+  const league = String(hass?.states?.[entityId]?.attributes?.league || "").trim().toLowerCase();
+  if (SPORT_DEFS[league]) return league;
+  return Object.entries(SPORT_DEFS).find(([, sport]) => sport.entity === entityId)?.[0] || null;
 };
 
 const PRESETS = {
@@ -131,8 +150,8 @@ class SportsTickerCard extends HTMLElement {
     const configured = asArray(this._config?.sports).filter((sport) => SPORT_DEFS[sport]);
     if (configured.length) return configured;
     if (this._config?.entity) {
-      const match = Object.entries(SPORT_DEFS).find(([, sport]) => sport.entity === this._config.entity);
-      if (match) return [match[0]];
+      const league = leagueForScoreboardEntity(this._hass, this._config.entity);
+      if (league) return [league];
     }
     return ["nfl"];
   }
@@ -140,7 +159,7 @@ class SportsTickerCard extends HTMLElement {
   _dataSignature() {
     if (!this._hass || !this._config) return "";
     const ids = this._family() === "ticker"
-      ? this._selectedSports().map((key) => SPORT_DEFS[key].entity)
+      ? this._selectedSports().map((key) => scoreboardEntityForLeague(this._hass, key)).filter(Boolean)
       : [this._config.entity];
     return ids.map((id) => {
       const state = this._hass.states[id];
@@ -346,7 +365,8 @@ class SportsTickerCard extends HTMLElement {
 
     for (const key of this._selectedSports()) {
       const def = SPORT_DEFS[key];
-      const stateObj = this._hass.states[def.entity];
+      const entityId = scoreboardEntityForLeague(this._hass, key);
+      const stateObj = entityId ? this._hass.states[entityId] : null;
       const events = asArray(stateObj?.attributes?.events);
       const games = events.slice(0, maxPerSport)
         .map((event) => this._normalizeEvent(event, def.kind))

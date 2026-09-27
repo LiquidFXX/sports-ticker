@@ -8,6 +8,7 @@ from homeassistant import config_entries
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_FAVORITE_TEAM_NAMES,
     CONF_FAVORITE_TEAMS,
     CONF_LEAGUES,
     CONF_POLL_INTERVAL,
@@ -68,6 +69,11 @@ def _favorite_field(league: str) -> str:
 def _custom_favorite_field(league: str) -> str:
     """Return the optional custom favorite-team field name."""
     return f"custom_favorite_team_{league}"
+
+
+def _custom_favorite_name_field(league: str) -> str:
+    """Return the optional custom favorite-team display-name field name."""
+    return f"custom_favorite_team_name_{league}"
 
 
 def _normalize_leagues(value: Any) -> list[str]:
@@ -183,9 +189,11 @@ def _basic_settings(
 def _favorites_schema(
     selected_leagues: list[str],
     current_favorites: dict[str, str] | None = None,
+    current_favorite_names: dict[str, str] | None = None,
 ) -> vol.Schema:
     """Build the favorite-team schema for selected leagues."""
     favorites = current_favorites or {}
+    favorite_names = current_favorite_names or {}
     schema_dict: dict[Any, Any] = {}
 
     for league in selected_leagues:
@@ -212,10 +220,17 @@ def _favorites_schema(
         )
 
         if league == "cfb":
+            is_custom = bool(current_favorite and current_favorite not in known_values)
             schema_dict[
                 vol.Optional(
                     _custom_favorite_field(league),
-                    default="" if current_favorite in known_values else current_favorite,
+                    default=current_favorite if is_custom else "",
+                )
+            ] = str
+            schema_dict[
+                vol.Optional(
+                    _custom_favorite_name_field(league),
+                    default=str(favorite_names.get(league, "") or "") if is_custom else "",
                 )
             ] = str
 
@@ -242,6 +257,31 @@ def _submitted_favorites(
             favorite_teams[league] = str(value).strip().upper()
 
     return favorite_teams
+
+
+def _submitted_favorite_names(
+    selected_leagues: list[str],
+    user_input: dict[str, Any],
+    favorite_teams: dict[str, str],
+) -> dict[str, str]:
+    """Return custom display names for custom favorite teams."""
+    favorite_names: dict[str, str] = {}
+
+    for league in selected_leagues:
+        if league != "cfb" or league not in favorite_teams:
+            continue
+
+        custom_team = str(
+            user_input.get(_custom_favorite_field(league), "") or ""
+        ).strip().upper()
+        custom_name = str(
+            user_input.get(_custom_favorite_name_field(league), "") or ""
+        ).strip()
+
+        if custom_team and favorite_teams.get(league) == custom_team and custom_name:
+            favorite_names[league] = custom_name
+
+    return favorite_names
 
 
 class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -286,11 +326,17 @@ class SportsTickerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.ConfigFlowResult:
         """Step 2: choose favorite teams."""
         if user_input is not None:
+            favorite_teams = _submitted_favorites(
+                self._selected_leagues,
+                user_input,
+            )
             data = {
                 **self._basic_config,
-                CONF_FAVORITE_TEAMS: _submitted_favorites(
+                CONF_FAVORITE_TEAMS: favorite_teams,
+                CONF_FAVORITE_TEAM_NAMES: _submitted_favorite_names(
                     self._selected_leagues,
                     user_input,
+                    favorite_teams,
                 ),
             }
 
@@ -363,18 +409,27 @@ class SportsTickerOptionsFlow(config_entries.OptionsFlow):
             **self._config_entry.options,
         }
         current_favorites = current.get(CONF_FAVORITE_TEAMS, {})
+        current_favorite_names = current.get(CONF_FAVORITE_TEAM_NAMES, {})
 
         if not isinstance(current_favorites, dict):
             current_favorites = {}
+        if not isinstance(current_favorite_names, dict):
+            current_favorite_names = {}
 
         if user_input is not None:
+            favorite_teams = _submitted_favorites(
+                self._selected_leagues,
+                user_input,
+            )
             return self.async_create_entry(
                 title="",
                 data={
                     **self._basic_config,
-                    CONF_FAVORITE_TEAMS: _submitted_favorites(
+                    CONF_FAVORITE_TEAMS: favorite_teams,
+                    CONF_FAVORITE_TEAM_NAMES: _submitted_favorite_names(
                         self._selected_leagues,
                         user_input,
+                        favorite_teams,
                     ),
                 },
             )
@@ -384,6 +439,7 @@ class SportsTickerOptionsFlow(config_entries.OptionsFlow):
             data_schema=_favorites_schema(
                 self._selected_leagues,
                 current_favorites,
+                current_favorite_names,
             ),
             description_placeholders={
                 "step_title": "Favorite Teams",

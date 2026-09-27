@@ -1,4 +1,4 @@
-const SPORTS_TICKER_EDITOR_VERSION = "0.6.0";
+const SPORTS_TICKER_EDITOR_VERSION = "0.6.1";
 
 const ST_SPORTS = {
   nfl:{label:"NFL",entity:"sensor.espn_nfl_scoreboard_raw"},cfb:{label:"CFB",entity:"sensor.espn_cfb_scoreboard_raw"},mlb:{label:"MLB",entity:"sensor.espn_mlb_scoreboard_raw"},nba:{label:"NBA",entity:"sensor.espn_nba_scoreboard_raw"},wnba:{label:"WNBA",entity:"sensor.espn_wnba_scoreboard_raw"},nhl:{label:"NHL",entity:"sensor.espn_nhl_scoreboard_raw"},mls:{label:"MLS",entity:"sensor.espn_mls_scoreboard_raw"},epl:{label:"Premier League",entity:"sensor.espn_epl_scoreboard_raw"},laliga:{label:"LaLiga",entity:"sensor.espn_laliga_scoreboard_raw"},bundesliga:{label:"Bundesliga",entity:"sensor.espn_bundesliga_scoreboard_raw"},seriea:{label:"Serie A",entity:"sensor.espn_seriea_scoreboard_raw"},ligue1:{label:"Ligue 1",entity:"sensor.espn_ligue1_scoreboard_raw"},ucl:{label:"Champions League",entity:"sensor.espn_ucl_scoreboard_raw"}
@@ -64,6 +64,7 @@ class SportsTickerCardEditor extends HTMLElement {
           ${this._toggle("show-top-five","Show Top 5 strip","mdi:podium",this._config.show_top_five!==false)}
           ${this._toggle("show-records","Show team records","mdi:trophy-outline",this._config.show_records!==false)}
           ${this._toggle("show-points","Show poll points","mdi:numeric",this._config.show_points!==false)}
+          ${this._toggle("show-votes","Show first-place votes","mdi:vote-outline",this._config.show_votes!==false)}
           ${this._toggle("show-movement","Show ranking movement","mdi:swap-vertical",this._config.show_movement!==false)}
         </div>
       </section>`:""}
@@ -79,7 +80,7 @@ class SportsTickerCardEditor extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-layout]").forEach(btn=>btn.addEventListener("click",()=>{const compact=btn.dataset.layout==="compact";this._emit({...this._config,type:"custom:sports-ticker-card",preset:compact?"game_compact":"game"});}));
     this.shadowRoot.querySelectorAll("[data-ticker-sport]").forEach(btn=>btn.addEventListener("click",()=>{const set=new Set(selectedSports),key=btn.dataset.tickerSport;set.has(key)?set.delete(key):set.add(key);if(!set.size)return;this._emit({...this._config,sports:[...set]});}));
     this.shadowRoot.querySelectorAll("[data-poll]").forEach(btn=>btn.addEventListener("click",()=>this._emit({...this._config,poll:btn.dataset.poll||""})));
-    [["show-logos","show_logos"],["show-league","show_league"],["show-records","show_records"],["show-venue","show_venue"],["show-broadcast","show_broadcast"],["show-top-five","show_top_five"],["show-points","show_points"],["show-movement","show_movement"],["pause-hover","ticker_pause_on_hover"],["favorite-only","favorite_only"],["prefer-favorite","prefer_favorite"],["show-recap","show_recap"],["show-espn","show_espn_link"]].forEach(([id,key])=>this.shadowRoot.getElementById(id)?.addEventListener("change",e=>this._emit({...this._config,[key]:e.target.checked})));
+    [["show-logos","show_logos"],["show-league","show_league"],["show-records","show_records"],["show-venue","show_venue"],["show-broadcast","show_broadcast"],["show-top-five","show_top_five"],["show-points","show_points"],["show-votes","show_votes"],["show-movement","show_movement"],["pause-hover","ticker_pause_on_hover"],["favorite-only","favorite_only"],["prefer-favorite","prefer_favorite"],["show-recap","show_recap"],["show-espn","show_espn_link"]].forEach(([id,key])=>this.shadowRoot.getElementById(id)?.addEventListener("change",e=>this._emit({...this._config,[key]:e.target.checked})));
     [["speed","ticker_seconds_per_game",3,20],["max-games","ticker_max_games_per_sport",1,30],["max-teams","max_teams",1,25]].forEach(([id,key,min,max])=>this.shadowRoot.getElementById(id)?.addEventListener("change",e=>{const v=Math.max(min,Math.min(max,Number(e.target.value)||min));this._emit({...this._config,[key]:v});}));
     this.shadowRoot.getElementById("advanced-button")?.addEventListener("click",()=>{this._advancedOpen=!this._advancedOpen;this._render();});
     this.shadowRoot.getElementById("event-id")?.addEventListener("change",e=>this._emit({...this._config,event_id:e.target.value.trim()||undefined}));
@@ -87,7 +88,7 @@ class SportsTickerCardEditor extends HTMLElement {
   }
   _changeType(type,available,selectedSports){
     const [,sport]=available[0]||[];const configured=this._config.entity;const entity=configured&&configured!=="sensor.espn_college_football_rankings"?configured:sport?.entity;
-    if(type==="cfb_rankings"){this._emit({type:"custom:sports-ticker-card",preset:"cfb_rankings",entity:"sensor.espn_college_football_rankings",poll:"",max_teams:25,show_top_five:true,show_records:true,show_points:true,show_movement:true});return;}
+    if(type==="cfb_rankings"){this._emit({type:"custom:sports-ticker-card",preset:"cfb_rankings",entity:"sensor.espn_college_football_rankings",poll:"",max_teams:25,show_top_five:true,show_records:true,show_points:true,show_votes:true,show_movement:true});return;}
     if(type==="highlights"){if(!entity)return;this._emit({type:"custom:sports-ticker-highlights-card",entity,favorite_only:this._config.favorite_only===true,prefer_favorite:this._config.prefer_favorite!==false,show_recap:this._config.show_recap!==false,show_espn_link:this._config.show_espn_link!==false});return;}
     if(type==="ticker"){const enabled=available.map(([k])=>k),sports=selectedSports.length?selectedSports:enabled.slice(0,1);this._emit({type:"custom:sports-ticker-card",preset:"ticker",sports,show_logos:this._config.show_logos!==false,ticker_pause_on_hover:this._config.ticker_pause_on_hover!==false,ticker_seconds_per_game:Number(this._config.ticker_seconds_per_game)||8,ticker_max_games_per_sport:Number(this._config.ticker_max_games_per_sport)||20});return;}
     if(!entity)return;this._emit({type:"custom:sports-ticker-card",preset:"game",entity,show_logos:true,show_league:true,show_records:true,show_venue:true,show_broadcast:true});

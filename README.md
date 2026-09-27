@@ -91,7 +91,7 @@ show_espn_link: true
 
 ### College Football Rankings
 
-The built-in College Football Rankings card uses `sensor.espn_college_football_rankings` automatically. In the visual editor, choose **CFB Rankings** and configure the poll, number of teams, Top 5 strip, team records, poll points, and ranking movement.
+The built-in College Football Rankings card uses `sensor.espn_college_football_rankings` automatically. In the visual editor, choose **CFB Rankings** and configure the poll, number of teams, Top 5 strip, team records, poll points, first-place votes, and ranking movement.
 
 With **Auto** selected, the card follows Sports Ticker's `primary_poll` and falls back to the AP Top 25 when needed.
 
@@ -104,6 +104,7 @@ max_teams: 25
 show_top_five: true
 show_records: true
 show_points: true
+show_votes: true
 show_movement: true
 ```
 

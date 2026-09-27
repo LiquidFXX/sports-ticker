@@ -12,7 +12,7 @@
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Custom%20Integration-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/LiquidFXX/sports-ticker/blob/main/LICENSE)
 
-**Stable release:** `v0.20.4.1`
+**Stable release:** `v0.20.5`
 
 </div>
 
@@ -43,6 +43,7 @@ Sports Ticker gives Home Assistant a reusable ESPN-powered sports data layer plu
 | 📅 **Next-game sensors** | Dedicated NFL and College Football next-game entities that follow your configured favorite team |
 | 🏆 **College Football rankings** | AP Top 25, Coaches Poll, CFP rankings, previous rank, trend, records, votes, points, logos, and dropped-out teams |
 | 🏈 **NFL standings & playoff picture** | Normalized AFC/NFC standings, divisions, playoff seeds, wild cards, cut-line helpers, clinch data, favorite-team highlighting, and flat team lists |
+| 🏈 **NFL fantasy data** | Weekly and season-to-date fantasy leaders, ESPN projections, roster/start percentages, roster movement, player stats, and fantasy-relevant injuries |
 | 📊 **Player / team leaders** | MLB player leader sensors plus NFL per-team game leaders for passing, rushing, receiving, sacks, and tackles |
 | 💾 **Failure-resistant data** | Last-good caching keeps cards populated when ESPN temporarily times out or returns bad data |
 
@@ -193,10 +194,28 @@ See **[NFL Standings & Playoff Picture example](examples/NFL.md#7-standings--pla
 ### College Football rankings
 
 ```text
-sensor.espn_cfb_rankings
+sensor.espn_college_football_rankings
 ```
 
-Card-friendly ranking groups include AP Top 25, Coaches Poll, and CFP rankings when ESPN publishes them.
+Card-friendly ranking groups include AP Top 25, Coaches Poll, and CFP rankings when ESPN publishes them. The built-in **CFB Rankings** card uses this sensor directly.
+
+### NFL fantasy
+
+When NFL is enabled:
+
+```text
+sensor.espn_nfl_fantasy_raw
+```
+
+This sensor exposes ESPN fantasy data for the current NFL season, including:
+
+- Current-week leaders for Overall, QB, RB, WR, TE, K, and D/ST.
+- Season-to-date leaders for the same position groups.
+- Weekly actual and projected fantasy points.
+- Season actual and projected fantasy points.
+- ESPN ownership/start percentages and roster movement.
+- Weekly and season stat payloads.
+- Fantasy-relevant injury records with player/team enrichment.
 
 ### MLB player leaders
 
@@ -266,11 +285,19 @@ Fresh data reports `stale: false`; cached fallback data reports `stale: true` wi
 
 ---
 
-## Current development
+## Current release
 
-The current stable release is **v0.20.4.1**.
+The current stable release is **v0.20.5**.
 
-`v0.20.4.1` is a maintenance patch that carries the current README and built-in card documentation into the installed HACS release tag while preserving the v0.20.4 integration behavior and entity model.
+### What is new in v0.20.5
+
+- **Built-in College Football Rankings card** — a native Sports Ticker card with visual-editor support for Auto/AP/Coaches/CFP polls, Top 5 strip, records, poll points, first-place votes, ranking movement, responsive two-column desktop layout, and denser tablet/mobile layouts.
+- **NFL fantasy data** — new `sensor.espn_nfl_fantasy_raw` with current-week and season-to-date leaderboards, actual/projected fantasy scoring, ownership/start percentages, roster movement, player stats, and fantasy-relevant injuries.
+- **Improved NFL fantasy injury handling** — filters out non-injury Active rows and enriches injury records with athlete/team information where ESPN data allows.
+- **More reliable bundled frontend loading** — Sports Ticker explicitly registers its Lovelace module resources when Home Assistant resource storage is available, with a fallback for YAML/non-storage resource mode.
+- **Frontend/editor refinements** — improved card picker/editor behavior, responsive sizing, cache-busting, and CFB rankings customization while preserving existing YAML configurations and entity IDs.
+
+The v0.20.5 feature line was validated through the alpha builds before promotion to stable, including Home Assistant tests, Hassfest, and HACS validation.
 
 ### Planned soccer expansion
 
@@ -288,7 +315,7 @@ Confirm that its league is enabled under **Sports Ticker → Configure**, then r
 
 ### A built-in card is missing
 
-Confirm Sports Ticker is updated to `v0.20.4.1` or newer, restart Home Assistant, and reload the Home Assistant frontend after the integration update.
+Confirm Sports Ticker is updated to `v0.20.5` or newer, restart Home Assistant, and reload the Home Assistant frontend after the integration update.
 
 ### A card is blank
 

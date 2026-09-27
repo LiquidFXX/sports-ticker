@@ -22,7 +22,11 @@ class SportsTickerCardEditor extends HTMLElement {
     const sportKey=this._sportKey(available), layout=this._layout();
     const selectedSports=Array.isArray(this._config.sports)?this._config.sports.filter(k=>keys.includes(k)):keys.slice(0,1);
     const rankingsEntity="sensor.espn_college_football_rankings";
-    const rankingsAvailable=Boolean(this._hass.states?.[rankingsEntity]);
+    const rankingsState=this._hass.states?.[rankingsEntity];
+    const rankingsAvailable=Boolean(rankingsState);
+    const rankingPolls=rankingsState?.attributes?.polls&&typeof rankingsState.attributes.polls==="object"?rankingsState.attributes.polls:{};
+    const pollDefs=[["","Auto"],["ap_top_25","AP Top 25"],["coaches_poll","Coaches"],["cfp","CFP"]].filter(([key])=>!key||Boolean(rankingPolls[key]));
+    const pollGrid=pollDefs.map(([key,label])=>`<button class="choice ${String(this._config.poll||"")===key?"selected":""}" data-poll="${key}" type="button">${label}</button>`).join("");
     const currentEntity=this._config.entity||(rankings?rankingsEntity:available[0]?.[1]?.entity)||"";
     const sportsGrid=available.map(([k,s])=>`<button type="button" class="choice ${s.entity===currentEntity?"selected":""}" data-sport="${k}">${s.label}</button>`).join("");
     const tickerGrid=available.map(([k,s])=>`<button type="button" class="choice ${selectedSports.includes(k)?"selected":""}" data-ticker-sport="${k}">${s.label}</button>`).join("");
@@ -54,12 +58,7 @@ class SportsTickerCardEditor extends HTMLElement {
       </section>
       ${ticker?`<section class="section"><div class="eyebrow">Ticker options</div><div class="options">${this._toggle("show-logos","Show team logos","mdi:image-outline",this._config.show_logos!==false)}${this._toggle("pause-hover","Pause on hover","mdi:pause-circle-outline",this._config.ticker_pause_on_hover!==false)}</div><div class="row"><div class="field"><div class="label">Seconds per game</div><input id="speed" type="number" min="3" max="20" value="${Number(this._config.ticker_seconds_per_game)||8}"></div><div class="field"><div class="label">Maximum games per sport</div><input id="max-games" type="number" min="1" max="30" value="${Number(this._config.ticker_max_games_per_sport)||20}"></div></div></section>`:""}
       ${rankings?`<section class="section"><div class="eyebrow">College Football rankings</div>
-        <div class="field"><div class="label">Poll</div><div class="sport-grid">
-          <button class="choice ${!this._config.poll?"selected":""}" data-poll="" type="button">Auto</button>
-          <button class="choice ${this._config.poll==="ap_top_25"?"selected":""}" data-poll="ap_top_25" type="button">AP Top 25</button>
-          <button class="choice ${this._config.poll==="coaches_poll"?"selected":""}" data-poll="coaches_poll" type="button">Coaches</button>
-          <button class="choice ${this._config.poll==="cfp"?"selected":""}" data-poll="cfp" type="button">CFP</button>
-        </div><div class="helper">Auto follows the integration's primary poll and falls back to AP when needed.</div></div>
+        <div class="field"><div class="label">Poll</div><div class="sport-grid">${pollGrid}</div><div class="helper">Auto follows the integration's primary poll and falls back to AP when needed.</div></div>
         <div class="field"><div class="label">Teams shown</div><input id="max-teams" type="number" min="1" max="25" value="${Math.max(1,Math.min(25,Number(this._config.max_teams)||25))}"></div>
         <div class="options">
           ${this._toggle("show-top-five","Show Top 5 strip","mdi:podium",this._config.show_top_five!==false)}
@@ -87,7 +86,7 @@ class SportsTickerCardEditor extends HTMLElement {
     this.shadowRoot.getElementById("entity-override")?.addEventListener("change",e=>this._emit({...this._config,entity:e.target.value.trim()}));
   }
   _changeType(type,available,selectedSports){
-    const [,sport]=available[0]||[];const entity=this._config.entity||sport?.entity;
+    const [,sport]=available[0]||[];const configured=this._config.entity;const entity=configured&&configured!=="sensor.espn_college_football_rankings"?configured:sport?.entity;
     if(type==="cfb_rankings"){this._emit({type:"custom:sports-ticker-card",preset:"cfb_rankings",entity:"sensor.espn_college_football_rankings",poll:"",max_teams:25,show_top_five:true,show_records:true,show_points:true,show_movement:true});return;}
     if(type==="highlights"){if(!entity)return;this._emit({type:"custom:sports-ticker-highlights-card",entity,favorite_only:this._config.favorite_only===true,prefer_favorite:this._config.prefer_favorite!==false,show_recap:this._config.show_recap!==false,show_espn_link:this._config.show_espn_link!==false});return;}
     if(type==="ticker"){const enabled=available.map(([k])=>k),sports=selectedSports.length?selectedSports:enabled.slice(0,1);this._emit({type:"custom:sports-ticker-card",preset:"ticker",sports,show_logos:this._config.show_logos!==false,ticker_pause_on_hover:this._config.ticker_pause_on_hover!==false,ticker_seconds_per_game:Number(this._config.ticker_seconds_per_game)||8,ticker_max_games_per_sport:Number(this._config.ticker_max_games_per_sport)||20});return;}

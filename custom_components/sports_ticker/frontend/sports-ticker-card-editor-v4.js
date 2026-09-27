@@ -1,19 +1,29 @@
-const SPORTS_TICKER_EDITOR_VERSION = "0.6.1";
+const SPORTS_TICKER_EDITOR_VERSION = "0.6.2";
 
 const ST_SPORTS = {
   nfl:{label:"NFL",entity:"sensor.espn_nfl_scoreboard_raw"},cfb:{label:"CFB",entity:"sensor.espn_cfb_scoreboard_raw"},mlb:{label:"MLB",entity:"sensor.espn_mlb_scoreboard_raw"},nba:{label:"NBA",entity:"sensor.espn_nba_scoreboard_raw"},wnba:{label:"WNBA",entity:"sensor.espn_wnba_scoreboard_raw"},nhl:{label:"NHL",entity:"sensor.espn_nhl_scoreboard_raw"},mls:{label:"MLS",entity:"sensor.espn_mls_scoreboard_raw"},epl:{label:"Premier League",entity:"sensor.espn_epl_scoreboard_raw"},laliga:{label:"LaLiga",entity:"sensor.espn_laliga_scoreboard_raw"},bundesliga:{label:"Bundesliga",entity:"sensor.espn_bundesliga_scoreboard_raw"},seriea:{label:"Serie A",entity:"sensor.espn_seriea_scoreboard_raw"},ligue1:{label:"Ligue 1",entity:"sensor.espn_ligue1_scoreboard_raw"},ucl:{label:"Champions League",entity:"sensor.espn_ucl_scoreboard_raw"}
 };
-const sportForEntity=(entity)=>Object.entries(ST_SPORTS).find(([,s])=>s.entity===entity)?.[0]||null;
+const scoreboardEntityForSport=(hass,key)=>{
+  const def=ST_SPORTS[key];if(!def||!hass?.states)return null;
+  const fallback=hass.states?.[def.entity];
+  if(fallback&&Array.isArray(fallback.attributes?.events))return def.entity;
+  return Object.entries(hass.states).find(([entityId,state])=>entityId.startsWith("sensor.")&&Array.isArray(state?.attributes?.events)&&String(state?.attributes?.league||"").trim().toLowerCase()===key)?.[0]||null;
+};
+const sportForEntity=(hass,entity)=>{
+  const league=String(hass?.states?.[entity]?.attributes?.league||"").trim().toLowerCase();
+  if(ST_SPORTS[league])return league;
+  return Object.entries(ST_SPORTS).find(([,s])=>s.entity===entity)?.[0]||null;
+};
 const stable=(v)=>JSON.stringify(v||{});
 
 class SportsTickerCardEditor extends HTMLElement {
   constructor(){super();this.attachShadow({mode:"open"});this._hass=null;this._config={};this._advancedOpen=false;this._availabilitySignature="";this._configSignature="";}
   set hass(hass){this._hass=hass;const sig=this._availableSports().map(([k])=>k).join("|");if(!this.shadowRoot.childNodes.length||sig!==this._availabilitySignature){this._availabilitySignature=sig;this._render();}}
   setConfig(config){const next={...(config||{})};const sig=stable(next);this._config=next;if(sig!==this._configSignature){this._configSignature=sig;this._render();}}
-  _availableSports(){if(!this._hass)return[];return Object.entries(ST_SPORTS).filter(([,s])=>{const st=this._hass.states?.[s.entity];return Boolean(st&&Array.isArray(st.attributes?.events));});}
+  _availableSports(){if(!this._hass)return[];return Object.entries(ST_SPORTS).map(([key,s])=>{const entity=scoreboardEntityForSport(this._hass,key);return entity?[key,{...s,entity}]:null;}).filter(Boolean);}
   _type(){const t=this._config.type||"custom:sports-ticker-card";if(t==="custom:sports-ticker-highlights-card")return"highlights";if(this._config.preset==="cfb_rankings")return"cfb_rankings";return this._config.preset==="ticker"?"ticker":"game";}
   _layout(){return this._config.preset==="game_compact"?"compact":"standard";}
-  _sportKey(available){const k=sportForEntity(this._config.entity);return k&&available.some(([x])=>x===k)?k:available[0]?.[0]||null;}
+  _sportKey(available){const k=sportForEntity(this._hass,this._config.entity);return k&&available.some(([x])=>x===k)?k:available[0]?.[0]||null;}
   _emit(next){this._config=next;this._configSignature=stable(next);this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:next},bubbles:true,composed:true}));this._render();}
   _toggle(id,label,icon,checked,helper=""){return `<label class="toggle"><span class="toggle-copy"><span class="toggle-title"><ha-icon icon="${icon}"></ha-icon><span>${label}</span></span>${helper?`<small>${helper}</small>`:""}</span><span class="switch"><input id="${id}" type="checkbox" ${checked?"checked":""}><span class="slider"></span></span></label>`;}
   _render(){
@@ -76,7 +86,7 @@ class SportsTickerCardEditor extends HTMLElement {
   }
   _wire(available,selectedSports,type,sportKey){
     this.shadowRoot.querySelectorAll("[data-type]").forEach(btn=>btn.addEventListener("click",()=>this._changeType(btn.dataset.type,available,selectedSports)));
-    this.shadowRoot.querySelectorAll("[data-sport]").forEach(btn=>btn.addEventListener("click",()=>{const def=ST_SPORTS[btn.dataset.sport];if(def)this._emit({...this._config,entity:def.entity});}));
+    this.shadowRoot.querySelectorAll("[data-sport]").forEach(btn=>btn.addEventListener("click",()=>{const def=available.find(([key])=>key===btn.dataset.sport)?.[1];if(def)this._emit({...this._config,entity:def.entity});}));
     this.shadowRoot.querySelectorAll("[data-layout]").forEach(btn=>btn.addEventListener("click",()=>{const compact=btn.dataset.layout==="compact";this._emit({...this._config,type:"custom:sports-ticker-card",preset:compact?"game_compact":"game"});}));
     this.shadowRoot.querySelectorAll("[data-ticker-sport]").forEach(btn=>btn.addEventListener("click",()=>{const set=new Set(selectedSports),key=btn.dataset.tickerSport;set.has(key)?set.delete(key):set.add(key);if(!set.size)return;this._emit({...this._config,sports:[...set]});}));
     this.shadowRoot.querySelectorAll("[data-poll]").forEach(btn=>btn.addEventListener("click",()=>this._emit({...this._config,poll:btn.dataset.poll||""})));

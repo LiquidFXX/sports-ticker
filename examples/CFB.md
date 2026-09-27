@@ -4,7 +4,7 @@
 
 # 🏈 College Football Example Layouts
 
-Copy/paste Home Assistant dashboard examples for the **Sports Ticker** College Football integration.
+Built-in and copy/paste Home Assistant dashboard options for the **Sports Ticker** College Football integration.
 
 ```yaml
 sensor.espn_college_football_rankings
@@ -28,6 +28,29 @@ sensor.espn_cfb_next_game
 | 1. College Football Rankings | Full Top 25 with logos, records, points, movement, and poll status | `sensor.espn_college_football_rankings` |
 
 ---
+
+## Built-in College Football Rankings card
+
+Sports Ticker now includes a native rankings card, so `custom:button-card` and `card-mod` are not required for the standard rankings layout. Add **Sports Ticker** from the dashboard card picker and choose **CFB Rankings** in the visual editor.
+
+```yaml
+type: custom:sports-ticker-card
+preset: cfb_rankings
+entity: sensor.espn_college_football_rankings
+poll: ""
+max_teams: 25
+show_top_five: true
+show_records: true
+show_points: true
+show_movement: true
+```
+
+The visual editor exposes the same core options. **Auto** follows `primary_poll` and falls back to AP when the selected poll is unavailable.
+
+The custom `button-card` example below remains available for users who want to modify every part of the layout.
+
+---
+
 
 ## 1. College Football Rankings
 

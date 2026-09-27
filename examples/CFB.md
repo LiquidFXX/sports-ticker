@@ -42,6 +42,7 @@ max_teams: 25
 show_top_five: true
 show_records: true
 show_points: true
+show_votes: true
 show_movement: true
 ```
 

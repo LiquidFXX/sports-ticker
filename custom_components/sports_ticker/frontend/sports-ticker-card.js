@@ -117,7 +117,7 @@ class SportsTickerCard extends HTMLElement {
 
   getGridOptions() {
     if (this._family() === "ticker") return { columns: 12, rows: 1, min_columns: 6, min_rows: 1 };
-    if (this._family() === "cfb_rankings") return { columns: 12, rows: 8, min_columns: 6, min_rows: 4 };
+    if (this._family() === "cfb_rankings") return { columns: 12, rows: "auto", min_columns: 6 };
     if (this._config?.preset === "game_compact") return { columns: 12, rows: 3, min_columns: 6, min_rows: 2 };
     return { columns: 12, rows: 4, min_columns: 6, min_rows: 3 };
   }
@@ -560,6 +560,9 @@ if (!window.customCards.some((card) => card.type === "sports-ticker-card")) {
     preview: true,
     documentationURL: "https://github.com/LiquidFXX/sports-ticker",
     getEntitySuggestion: (hass, entityId) => {
+      if (entityId === "sensor.espn_college_football_rankings") {
+        return { config: { type: "custom:sports-ticker-card", entity: entityId, preset: "cfb_rankings" } };
+      }
       if (!isSportsTickerScoreboardEntity(hass, entityId)) return null;
       return { config: { type: "custom:sports-ticker-card", entity: entityId, preset: "game" } };
     },

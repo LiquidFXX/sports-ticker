@@ -32,7 +32,11 @@
           "favorite_team_bundesliga": "Bundesliga favorite team",
           "favorite_team_seriea": "Serie A favorite team",
           "favorite_team_ligue1": "Ligue 1 favorite team",
-          "favorite_team_ucl": "Champions League favorite team"
+          "favorite_team_ucl": "Champions League favorite team",
+          "custom_favorite_team_cfb": "Custom College Football team abbreviation"
+        },
+        "data_description": {
+          "custom_favorite_team_cfb": "Optional. Enter the ESPN team abbreviation for a school not listed above. This value overrides the College Football dropdown."
         }
       }
     },
@@ -73,7 +77,11 @@
           "favorite_team_bundesliga": "Bundesliga favorite team",
           "favorite_team_seriea": "Serie A favorite team",
           "favorite_team_ligue1": "Ligue 1 favorite team",
-          "favorite_team_ucl": "Champions League favorite team"
+          "favorite_team_ucl": "Champions League favorite team",
+          "custom_favorite_team_cfb": "Custom College Football team abbreviation"
+        },
+        "data_description": {
+          "custom_favorite_team_cfb": "Optional. Enter the ESPN team abbreviation for a school not listed above. This value overrides the College Football dropdown."
         }
       }
     },

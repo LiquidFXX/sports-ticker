@@ -20,7 +20,7 @@
 
 ## See it in action
 
-Sports Ticker gives Home Assistant a reusable ESPN-powered sports data layer plus native dashboard cards for live games, highlights, and scrolling scoreboards. The existing Lovelace examples remain available for users who want fully custom layouts.
+Sports Ticker gives Home Assistant a reusable ESPN-powered sports data layer plus native dashboard cards for live games, highlights, scrolling scoreboards, and College Football rankings. The existing Lovelace examples remain available for users who want fully custom layouts.
 
 <a href="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/images/Recording%202026-09-15%20100745.gif">
   <img src="https://github.com/LiquidFXX/sports-ticker/blob/main/examples/images/Recording%202026-09-15%20100745.gif" width="100%">
@@ -38,6 +38,7 @@ Sports Ticker gives Home Assistant a reusable ESPN-powered sports data layer plu
 | 🧩 **Built-in Game card** | Standard and compact matchup layouts using Sports Ticker scoreboard entities |
 | 🎬 **Built-in Game Highlights card** | Playable ESPN game highlights with favorite-team-only and prefer-favorite selection options |
 | 📺 **Built-in Multi-Sport Ticker** | Responsive scrolling scoreboard across supported leagues with configurable speed, game count, logos, and pause behavior |
+| 🏈 **Built-in CFB Rankings card** | Responsive AP Top 25 / Coaches / CFP rankings with logos, records, poll points, movement, Top 5 strip, cache state, and visual-editor controls |
 | ⭐ **Favorite teams** | Select a favorite team per league and expose it directly to cards and automations |
 | 📅 **Next-game sensors** | Dedicated NFL and College Football next-game entities that follow your configured favorite team |
 | 🏆 **College Football rankings** | AP Top 25, Coaches Poll, CFP rankings, previous rank, trend, records, votes, points, logos, and dropped-out teams |
@@ -86,6 +87,24 @@ favorite_only: true
 prefer_favorite: true
 show_recap: true
 show_espn_link: true
+```
+
+### College Football Rankings
+
+The built-in College Football Rankings card uses `sensor.espn_college_football_rankings` automatically. In the visual editor, choose **CFB Rankings** and configure the poll, number of teams, Top 5 strip, team records, poll points, and ranking movement.
+
+With **Auto** selected, the card follows Sports Ticker's `primary_poll` and falls back to the AP Top 25 when needed.
+
+```yaml
+type: custom:sports-ticker-card
+preset: cfb_rankings
+entity: sensor.espn_college_football_rankings
+poll: ""
+max_teams: 25
+show_top_five: true
+show_records: true
+show_points: true
+show_movement: true
 ```
 
 ### Multi-Sport Ticker

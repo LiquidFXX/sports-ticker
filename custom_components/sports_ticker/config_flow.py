@@ -65,6 +65,11 @@ def _favorite_field(league: str) -> str:
     return f"favorite_team_{league}"
 
 
+def _custom_favorite_field(league: str) -> str:
+    """Return the optional custom favorite-team field name."""
+    return f"custom_favorite_team_{league}"
+
+
 def _normalize_leagues(value: Any) -> list[str]:
     """Normalize and validate configured leagues."""
     if isinstance(value, str):
@@ -184,10 +189,18 @@ def _favorites_schema(
     schema_dict: dict[Any, Any] = {}
 
     for league in selected_leagues:
+        current_favorite = str(favorites.get(league, "") or "").strip().upper()
+        known_values = {
+            str(team.get("value", "")).strip().upper()
+            for team in TEAM_OPTIONS.get(league, [])
+            if team.get("value")
+        }
+        dropdown_default = current_favorite if current_favorite in known_values else ""
+
         schema_dict[
             vol.Optional(
                 _favorite_field(league),
-                default=favorites.get(league, ""),
+                default=dropdown_default,
             )
         ] = selector.SelectSelector(
             selector.SelectSelectorConfig(
@@ -197,6 +210,14 @@ def _favorites_schema(
                 translation_key=f"favorite_team_{league}",
             )
         )
+
+        if league == "cfb":
+            schema_dict[
+                vol.Optional(
+                    _custom_favorite_field(league),
+                    default="" if current_favorite in known_values else current_favorite,
+                )
+            ] = str
 
     return vol.Schema(schema_dict)
 
@@ -210,8 +231,15 @@ def _submitted_favorites(
 
     for league in selected_leagues:
         value = user_input.get(_favorite_field(league), "")
+        if league == "cfb":
+            custom_value = str(
+                user_input.get(_custom_favorite_field(league), "") or ""
+            ).strip().upper()
+            if custom_value:
+                value = custom_value
+
         if value:
-            favorite_teams[league] = str(value)
+            favorite_teams[league] = str(value).strip().upper()
 
     return favorite_teams
 

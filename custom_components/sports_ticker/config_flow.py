@@ -12,6 +12,9 @@ from .const import (
     CONF_FAVORITE_TEAMS,
     CONF_LEAGUES,
     CONF_POLL_INTERVAL,
+    CONF_SPOILER_DELAY,
+    DEFAULT_SPOILER_DELAY,
+    SPOILER_DELAY_OPTIONS,
     CONF_TICKER_SPEED,
     CONF_TICKER_THEME,
     DEFAULT_POLL_INTERVAL,
@@ -119,6 +122,22 @@ def _settings_schema(current: dict[str, Any]) -> vol.Schema:
                 )
             ),
             vol.Optional(
+                CONF_SPOILER_DELAY,
+                default=str(current.get(CONF_SPOILER_DELAY, DEFAULT_SPOILER_DELAY)),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": str(seconds), "label": (
+                            "Off (live)" if seconds == 0
+                            else f"{seconds} seconds"
+                        )}
+                        for seconds in SPOILER_DELAY_OPTIONS
+                    ],
+                    multiple=False,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Optional(
                 CONF_TICKER_SPEED,
                 default=current.get(CONF_TICKER_SPEED, DEFAULT_TICKER_SPEED),
             ): selector.NumberSelector(
@@ -153,6 +172,19 @@ def _settings_schema(current: dict[str, Any]) -> vol.Schema:
     )
 
 
+def _spoiler_delay_value(user_input: dict[str, Any], current: dict[str, Any]) -> int:
+    """Accept only supported hold times; keep older saved entries compatible."""
+    raw = user_input.get(
+        CONF_SPOILER_DELAY,
+        current.get(CONF_SPOILER_DELAY, DEFAULT_SPOILER_DELAY),
+    )
+    try:
+        delay = int(raw)
+    except (ValueError, TypeError):
+        return DEFAULT_SPOILER_DELAY
+    return delay if delay in SPOILER_DELAY_OPTIONS else DEFAULT_SPOILER_DELAY
+
+
 def _basic_settings(
     user_input: dict[str, Any],
     current: dict[str, Any],
@@ -171,6 +203,7 @@ def _basic_settings(
                 current.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
             )
         ),
+        CONF_SPOILER_DELAY: _spoiler_delay_value(user_input, current),
         CONF_TICKER_SPEED: int(
             user_input.get(
                 CONF_TICKER_SPEED,

@@ -25,5 +25,10 @@ jobs:
       - name: Compile integration Python
         run: python -m compileall -q custom_components/sports_ticker
 
+      - name: Check bundled card JavaScript syntax
+        run: |
+          node --check custom_components/sports_ticker/frontend/sports-ticker-card-v2.js
+          node --check custom_components/sports_ticker/frontend/sports-ticker-card-editor-v4.js
+
       - name: Run unit tests
         run: python -m unittest discover -s tests -v

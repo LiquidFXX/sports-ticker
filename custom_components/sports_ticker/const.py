@@ -6,6 +6,9 @@ CONF_LEAGUES = "leagues"
 CONF_FAVORITE_TEAMS = "favorite_teams"
 CONF_FAVORITE_TEAM_NAMES = "favorite_team_names"
 CONF_POLL_INTERVAL = "poll_interval"
+CONF_SPOILER_DELAY = "spoiler_delay_seconds"
+DEFAULT_SPOILER_DELAY = 0
+SPOILER_DELAY_OPTIONS = (0, 30, 60, 90, 120, 180)
 
 # Ticker UI helpers exposed as sensor attributes for button-card use
 CONF_TICKER_SPEED = "ticker_speed"

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
+
+from homeassistant.helpers.event import async_call_later
+from homeassistant.util import dt as dt_util
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -9,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .cfb_rankings import CFBRankingsCoordinator, ESPNCFBRankings
-from .const import DOMAIN, CONF_LEAGUES, CONF_FAVORITE_TEAMS, CONF_FAVORITE_TEAM_NAMES, LEAGUES, LEAGUE_LABELS, TEAM_OPTIONS, CONF_TICKER_SPEED, DEFAULT_TICKER_SPEED, CONF_TICKER_THEME, DEFAULT_TICKER_THEME
+from .const import DOMAIN, CONF_LEAGUES, CONF_FAVORITE_TEAMS, CONF_FAVORITE_TEAM_NAMES, LEAGUES, LEAGUE_LABELS, TEAM_OPTIONS, CONF_TICKER_SPEED, DEFAULT_TICKER_SPEED, CONF_TICKER_THEME, DEFAULT_TICKER_THEME, CONF_SPOILER_DELAY, DEFAULT_SPOILER_DELAY, SPOILER_DELAY_OPTIONS
 from .coordinator import MLB_PLAYER_LEADERS_KEY, SportsTickerCoordinator
 from .league_data import GENERIC_STANDINGS_LEAGUES, POSTSEASON_LEAGUES, TEAM_LEAGUES
 from .mlb_standings import ESPNMLBStandingsRaw, MLBStandingsCoordinator
@@ -18,6 +21,7 @@ from .nfl_fantasy import ESPNNFLFantasyRaw, NFLFantasyCoordinator
 from .nfl_standings import ESPNNFLStandingsRaw, NFLStandingsCoordinator
 from .postseason import ESPNPostseason, PostseasonCoordinator
 from .standings import ESPNLeagueStandingsRaw, LeagueStandingsCoordinator
+from .spoiler_delay import DelayedScoreboardBuffer
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
@@ -27,6 +31,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     if isinstance(leagues, str): leagues = [leagues]
     leagues = [str(league).strip().lower() for league in (leagues or []) if str(league).strip().lower() in LEAGUES]
     entities: list[SensorEntity] = [ESPNRawScoreboard(coordinator, league) for league in leagues]
+
+    # Add separate delayed scoreboards only when configured. Original sensors,
+    # scoreboards used by automations, and unrelated entities stay live.
+    settings = {**entry.data, **entry.options}
+    try:
+        spoiler_delay = int(settings.get(CONF_SPOILER_DELAY, DEFAULT_SPOILER_DELAY))
+    except (TypeError, ValueError):
+        spoiler_delay = DEFAULT_SPOILER_DELAY
+    if spoiler_delay in SPOILER_DELAY_OPTIONS and spoiler_delay > 0:
+        entities.extend(
+            ESPNDelayedScoreboard(coordinator, league, spoiler_delay)
+            for league in leagues
+        )
 
     for league in leagues:
         if league not in TEAM_LEAGUES: continue
@@ -68,22 +85,25 @@ class ESPNRawScoreboard(CoordinatorEntity[SportsTickerCoordinator], SensorEntity
     def __init__(self, coordinator: SportsTickerCoordinator, league: str) -> None:
         super().__init__(coordinator); self.league = league; self.league_name = LEAGUE_LABELS.get(league, league.upper()); self._attr_unique_id = f"espn_{league}_scoreboard_raw"; self._attr_name = f"ESPN {self.league_name} Scoreboard Raw"
 
+    def _get_data(self) -> dict[str, Any]:
+        """Return this entity's snapshot, never another entity's state."""
+        data = self.coordinator.data.get(self.league) if self.coordinator.data else None
+        return data if isinstance(data, dict) else {}
+
     @property
     def available(self) -> bool:
-        return bool(self.coordinator.data) and isinstance(self.coordinator.data.get(self.league), dict)
+        return bool(self._get_data())
 
     @property
     def native_value(self) -> str:
-        if not self.coordinator.data: return "No data"
-        data = self.coordinator.data.get(self.league, {})
-        if not isinstance(data, dict): return "No data"
+        data = self._get_data()
+        if not data: return "No data"
         events = data.get("events", []) if isinstance(data.get("events"), list) else []; meta = data.get("_sports_ticker_meta", {})
         return f"Cached - {len(events)} games" if isinstance(meta, dict) and meta.get("stale") else f"{len(events)} games"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        data = self.coordinator.data.get(self.league, {}) if self.coordinator.data else {}
-        if not isinstance(data, dict): data = {}
+        data = self._get_data()
         opts = {**self.coordinator.entry.data, **self.coordinator.entry.options}; meta = data.get("_sports_ticker_meta", {})
         if not isinstance(meta, dict): meta = {}
         favorite_teams = opts.get(CONF_FAVORITE_TEAMS, {})
@@ -101,6 +121,72 @@ class ESPNRawScoreboard(CoordinatorEntity[SportsTickerCoordinator], SensorEntity
             custom_name = str(favorite_names.get(self.league, "") or "").strip()
             if custom_name: return custom_name
         return favorite_team
+
+
+class ESPNDelayedScoreboard(ESPNRawScoreboard):
+    """An optional scoreboard that never reads live scores at render time."""
+
+    _attr_icon = "mdi:clock-outline"
+
+    def __init__(
+        self, coordinator: SportsTickerCoordinator, league: str, delay_seconds: int
+    ) -> None:
+        super().__init__(coordinator, league)
+        self._attr_unique_id = f"espn_{league}_scoreboard_delayed"
+        self._attr_name = f"ESPN {self.league_name} Scoreboard Delayed"
+        self._buffer = DelayedScoreboardBuffer(delay_seconds)
+        self._delayed_data: dict[str, Any] | None = None
+        self._cancel_release: Callable[[], None] | None = None
+
+    def _get_data(self) -> dict[str, Any]:
+        # Never fall back to the coordinator's current data, even on startup or
+        # after a failed fetch; doing so would reveal scores before the delay.
+        return self._delayed_data if self._delayed_data is not None else {}
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        # Coordinator may have completed its initial refresh before entities
+        # were added. Treat that payload as newly observed, not historical.
+        self._handle_coordinator_update()
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._cancel_release is not None:
+            self._cancel_release()
+            self._cancel_release = None
+        await super().async_will_remove_from_hass()
+
+    def _handle_coordinator_update(self) -> None:
+        """Queue independent copies of coordinator data, not references."""
+        if not self.hass or not self.coordinator.data:
+            return
+        snapshot = self.coordinator.data.get(self.league)
+        if not isinstance(snapshot, dict):
+            return
+        self._buffer.enqueue(snapshot, dt_util.utcnow())
+        self._schedule_next_release()
+
+    def _schedule_next_release(self) -> None:
+        if self._cancel_release is not None:
+            return
+        next_due = self._buffer.next_due
+        if next_due is None:
+            return
+        seconds = max(0.0, (next_due - dt_util.utcnow()).total_seconds())
+        self._cancel_release = async_call_later(self.hass, seconds, self._release_ready)
+
+    def _release_ready(self, _now: Any) -> None:
+        self._cancel_release = None
+        ready = self._buffer.take_ready(dt_util.utcnow())
+        if ready is not None:
+            self._delayed_data = ready
+            self.async_write_ha_state()
+        self._schedule_next_release()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        attrs = super().extra_state_attributes
+        attrs["spoiler_delay_seconds"] = self._buffer.delay_seconds
+        return attrs
 
 
 class ESPNMLBPlayerLeaders(CoordinatorEntity[SportsTickerCoordinator], SensorEntity):

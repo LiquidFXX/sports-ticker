@@ -7,10 +7,12 @@
         "data": {
           "leagues": "Sports & leagues",
           "poll_interval": "Poll interval",
+          "spoiler_delay_seconds": "Scoreboard spoiler delay",
           "ticker_speed": "Ticker speed (lower = faster)",
           "ticker_theme": "Ticker theme"
         },
         "data_description": {
+          "spoiler_delay_seconds": "Hold new scores before publishing separate delayed scoreboard sensors. Live sensors and automations remain unchanged. Select delayed scoreboards in your dashboard cards; the delayed feed is blank until its first hold period passes.",
           "ticker_speed": "Sets the scroll duration in seconds. Lower numbers scroll faster; higher numbers scroll slower."
         }
       },
@@ -54,10 +56,12 @@
         "data": {
           "leagues": "Sports & leagues",
           "poll_interval": "Poll interval",
+          "spoiler_delay_seconds": "Scoreboard spoiler delay",
           "ticker_speed": "Ticker speed (lower = faster)",
           "ticker_theme": "Ticker theme"
         },
         "data_description": {
+          "spoiler_delay_seconds": "Hold new scores before publishing separate delayed scoreboard sensors. Live sensors and automations remain unchanged. Select delayed scoreboards in your dashboard cards; the delayed feed is blank until its first hold period passes.",
           "ticker_speed": "Sets the scroll duration in seconds. Lower numbers scroll faster; higher numbers scroll slower."
         }
       },

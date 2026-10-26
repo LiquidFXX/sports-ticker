@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.6.3";
+const CARD_VERSION = "0.6.4";
 
 const htmlEscape = (value) => String(value ?? "")
   .replaceAll("&", "&amp;")
@@ -25,9 +25,20 @@ const SPORT_DEFS = {
   ucl: { label: "UCL", entity: "sensor.espn_ucl_scoreboard_raw", kind: "soccer", accent: "#4338ca" },
 };
 
-const scoreboardEntityForLeague = (hass, league) => {
+const scoreboardEntityForLeague = (hass, league, delayed = false) => {
   const def = SPORT_DEFS[league];
   if (!def || !hass?.states) return null;
+  if (delayed) {
+    const expected = `sensor.espn_${league}_scoreboard_delayed`;
+    if (hass.states[expected]) return expected;
+    // Respect HA entity_id renames, but never fall back to a live sensor.
+    const alternate = Object.entries(hass.states).find(([id, state]) =>
+      id.startsWith("sensor.") &&
+      Number(state?.attributes?.spoiler_delay_seconds) > 0 &&
+      String(state?.attributes?.league || "").toLowerCase() === league
+    );
+    return alternate?.[0] || null;
+  }
   const fallback = hass.states[def.entity];
   if (fallback && Array.isArray(fallback.attributes?.events)) return def.entity;
   const match = Object.entries(hass.states).find(([entityId, state]) =>
@@ -156,15 +167,24 @@ class SportsTickerCard extends HTMLElement {
     return ["nfl"];
   }
 
+  _displayEntity() {
+    if (this._family() !== "game" || this._config?.use_delayed_scores !== true) {
+      return this._config?.entity;
+    }
+    const league = leagueForScoreboardEntity(this._hass, this._config.entity);
+    return league ? scoreboardEntityForLeague(this._hass, league, true) : null;
+  }
+
   _dataSignature() {
     if (!this._hass || !this._config) return "";
+    const delayed = this._config.use_delayed_scores === true;
     const ids = this._family() === "ticker"
-      ? this._selectedSports().map((key) => scoreboardEntityForLeague(this._hass, key)).filter(Boolean)
-      : [this._config.entity];
-    return ids.map((id) => {
+      ? this._selectedSports().map((key) => scoreboardEntityForLeague(this._hass, key, delayed)).filter(Boolean)
+      : [this._displayEntity()].filter(Boolean);
+    return `${this._family()}:${delayed}` + ids.map((id) => {
       const state = this._hass.states[id];
-      return `${id}:${state?.last_updated || "missing"}:${state?.state || ""}`;
-    }).join("|");
+      return `|${id}:${state?.last_updated || "missing"}:${state?.state || ""}`;
+    }).join("");
   }
 
   _render() {
@@ -174,9 +194,13 @@ class SportsTickerCard extends HTMLElement {
       return;
     }
 
-    const stateObj = this._hass.states[this._config.entity];
+    const entityId = this._displayEntity();
+    const stateObj = entityId ? this._hass.states[entityId] : null;
     if (!stateObj) {
-      this.shadowRoot.innerHTML = this._styles() + this._message(`Entity not found: ${this._config.entity}`);
+      const message = this._config.use_delayed_scores === true && this._family() === "game"
+        ? "Enable Spoiler Delay in Sports Ticker settings, then wait for the first delayed scoreboard update."
+        : `Entity not found: ${this._config.entity}`;
+      this.shadowRoot.innerHTML = this._styles() + this._message(message);
       return;
     }
     const attrs = stateObj.attributes ?? {};
@@ -365,7 +389,7 @@ class SportsTickerCard extends HTMLElement {
 
     for (const key of this._selectedSports()) {
       const def = SPORT_DEFS[key];
-      const entityId = scoreboardEntityForLeague(this._hass, key);
+      const entityId = scoreboardEntityForLeague(this._hass, key, this._config.use_delayed_scores === true);
       const stateObj = entityId ? this._hass.states[entityId] : null;
       const events = asArray(stateObj?.attributes?.events);
       const games = events.slice(0, maxPerSport)
@@ -375,7 +399,10 @@ class SportsTickerCard extends HTMLElement {
     }
 
     if (!groups.length) {
-      this.shadowRoot.innerHTML = this._styles() + this._message("No games are available for the selected ticker sports. Make sure those leagues are enabled in Sports Ticker.");
+      const message = this._config.use_delayed_scores === true
+        ? "No delayed scores are available yet. Enable Spoiler Delay in Sports Ticker settings and allow the first hold period to finish."
+        : "No games are available for the selected ticker sports. Make sure those leagues are enabled in Sports Ticker.";
+      this.shadowRoot.innerHTML = this._styles() + this._message(message);
       return;
     }
 

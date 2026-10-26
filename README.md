@@ -45,6 +45,7 @@ Sports Ticker gives Home Assistant a reusable ESPN-powered sports data layer plu
 | 🏈 **NFL standings & playoff picture** | Normalized AFC/NFC standings, divisions, playoff seeds, wild cards, cut-line helpers, clinch data, favorite-team highlighting, and flat team lists |
 | 🏈 **NFL fantasy data** | Weekly and season-to-date fantasy leaders, ESPN projections, roster/start percentages, roster movement, player stats, and fantasy-relevant injuries |
 | 📊 **Player / team leaders** | MLB player leader sensors plus NFL per-team game leaders for passing, rushing, receiving, sacks, and tackles |
+| ⏱️ **Optional spoiler delay** | Hold scoreboard snapshots 30–180 seconds behind ESPN retrieval in separate delayed entities; live scoreboard sensors are unchanged |
 | 💾 **Failure-resistant data** | Last-good caching keeps cards populated when ESPN temporarily times out or returns bad data |
 
 Sports Ticker remains a reusable sports-data layer. Built-in cards are additive; existing sensors, entity IDs, YAML examples, `custom:button-card`, `card-mod`, Mushroom, and custom dashboards remain supported.
@@ -80,7 +81,7 @@ It supports:
 - Optional ESPN link.
 - Large centered play control for touch-friendly dashboards.
 
-The favorite team comes from the selected league's Sports Ticker integration settings; it does not need to be configured again on the card.
+The favorite team comes from the selected league's Sports Ticker integration settings; it does not need to be configured again on the card. If you use spoiler protection, point Highlights cards at the corresponding delayed scoreboard sensor to avoid reading newly published events from the live feed.
 
 ```yaml
 type: custom:sports-ticker-highlights-card
@@ -169,6 +170,40 @@ sensor.espn_epl_scoreboard_raw
 ```
 
 Typical attributes include `events`, season/day metadata, favorite-team information, ticker settings, and data-freshness metadata.
+
+### Optional delayed scoreboards (spoiler protection)
+
+Under **Sports Ticker → Configure**, set **Scoreboard spoiler delay** to Off (default), 30, 60, 90, 120, or 180 seconds.
+
+When enabled, a second sensor is created for every selected league, for example:
+
+```text
+sensor.espn_nfl_scoreboard_delayed
+sensor.espn_cfb_scoreboard_delayed
+sensor.espn_mlb_scoreboard_delayed
+```
+
+Delayed entities publish a copied scoreboard snapshot **only after its hold period has passed**, timed from when Sports Ticker fetched it. They expose the same `events` and league metadata attributes as the corresponding live scoreboards, plus `spoiler_delay_seconds`. The integration continues polling ESPN at its configured interval; this option does **not** reduce polling frequency.
+
+For the built-in **Game** or **Multi-Sport Ticker** cards, enable **Use delayed scoreboard data** in the card editor; the cards will never silently fall back to live scores if a delayed sensor is missing or warming up. For other cards, use the delayed entity ID explicitly:
+
+```yaml
+type: custom:sports-ticker-card
+preset: game
+entity: sensor.espn_nfl_scoreboard_raw
+use_delayed_scores: true
+```
+
+```yaml
+type: custom:sports-ticker-card
+preset: ticker
+sports:
+  - nfl
+  - cfb
+use_delayed_scores: true
+```
+
+**Important:** This is a minimum hold time *after retrieval*, not a guarantee of synchronizing with a particular TV provider. A new delayed sensor starts empty after a Home Assistant restart until its first hold period completes. The normal `*_scoreboard_raw` sensors, next-game sensors, standings, alerts, and third-party dashboards using live sources stay live; select delayed sources wherever you want spoiler protection. Disabling the setting removes the optional delayed entities (Home Assistant may retain their former entity registry entries).
 
 ### Favorite-team next game
 
@@ -259,7 +294,7 @@ Open:
 Settings → Devices & services → Sports Ticker → Configure
 ```
 
-Choose the leagues you want, then configure favorite teams, poll interval, ticker speed, and other available league settings.
+Choose the leagues you want, then configure favorite teams, poll interval, spoiler delay (optional), ticker speed, and other available league settings.
 
 ---
 
